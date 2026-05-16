@@ -4,10 +4,15 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Ae! — Split Parking</title>
+  <link rel="icon" href="Ae_mini_ikona.png" type="image/png" />
+  <link rel="apple-touch-icon" href="Ae_mini_ikona.png" />
+  <meta name="theme-color" content="#0a0a0f" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <style>
     :root {
       --bg: #0a0a0f;
@@ -19,6 +24,64 @@
       --text: #F0F0F0;
       --muted: #6B7280;
       --border: rgba(255,255,255,0.08);
+      --scrollbar-track: rgba(255, 255, 255, 0.06);
+      --scrollbar-thumb: rgba(0, 212, 170, 0.55);
+      --scrollbar-thumb-hover: #00D4AA;
+    }
+    /* Scrollbars — dark track, teal thumb (Firefox + WebKit) */
+    .phone,
+    #add-spot-modal,
+    #qr-modal {
+      scrollbar-width: thin;
+      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+    }
+    .phone *::-webkit-scrollbar,
+    #add-spot-modal *::-webkit-scrollbar,
+    #qr-modal *::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .phone *::-webkit-scrollbar-track,
+    #add-spot-modal *::-webkit-scrollbar-track,
+    #qr-modal *::-webkit-scrollbar-track {
+      background: var(--scrollbar-track);
+      border-radius: 100px;
+    }
+    .phone *::-webkit-scrollbar-thumb,
+    #add-spot-modal *::-webkit-scrollbar-thumb,
+    #qr-modal *::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, rgba(0, 212, 170, 0.75), rgba(0, 168, 138, 0.45));
+      border-radius: 100px;
+      border: 1px solid rgba(0, 212, 170, 0.2);
+      min-height: 28px;
+    }
+    .phone *::-webkit-scrollbar-thumb:hover,
+    #add-spot-modal *::-webkit-scrollbar-thumb:hover,
+    #qr-modal *::-webkit-scrollbar-thumb:hover {
+      background: var(--scrollbar-thumb-hover);
+      border-color: rgba(0, 212, 170, 0.45);
+    }
+    .phone *::-webkit-scrollbar-thumb:active,
+    #add-spot-modal *::-webkit-scrollbar-thumb:active,
+    #qr-modal *::-webkit-scrollbar-thumb:active {
+      background: #00eec4;
+    }
+    .phone *::-webkit-scrollbar-corner,
+    #add-spot-modal *::-webkit-scrollbar-corner,
+    #qr-modal *::-webkit-scrollbar-corner {
+      background: transparent;
+    }
+    .rewards-scroll::-webkit-scrollbar {
+      height: 5px;
+    }
+    .rewards-scroll::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.04);
+      border-radius: 100px;
+      margin: 0 2px;
+    }
+    .rewards-scroll::-webkit-scrollbar-thumb {
+      min-height: 0;
+      border-radius: 100px;
     }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html, body {
@@ -79,10 +142,11 @@
       text-align: center; padding: 32px 24px;
       cursor: pointer;
     }
-    .splash-logo {
-      font-size: 96px; font-weight: 900; color: var(--teal);
-      line-height: 1; letter-spacing: -3px;
+    .app-icon { display: block; object-fit: contain; }
+    .splash-logo.app-icon {
+      width: min(56vw, 168px); height: auto; margin: 0 auto;
     }
+    .logo-sm.app-icon { width: 32px; height: 32px; flex-shrink: 0; }
     .splash-tag { font-size: 18px; color: #fff; margin-top: 16px; font-weight: 600; }
     .splash-sub { font-size: 14px; color: var(--muted); margin-top: 10px; line-height: 1.5; }
     .splash-dots { display: flex; gap: 8px; margin-top: 40px; justify-content: center; }
@@ -100,35 +164,245 @@
     /* Map shared */
     .map-box { flex: 1; position: relative; min-height: 0; }
     .leaflet-map { width: 100%; height: 100%; }
-    .leaflet-container { background: var(--bg); font-family: inherit; }
-    .pin-wrap, .seeker-wrap { background: transparent !important; border: none !important; }
+    .leaflet-container { background: var(--bg); font-family: inherit; touch-action: none; }
+    .leaflet-grab { cursor: grab; }
+    .leaflet-dragging .leaflet-grab { cursor: grabbing; }
+    .pin-wrap, .seeker-wrap, .user-loc-wrap { background: transparent !important; border: none !important; }
     .pin-red {
-      width: 14px; height: 14px; background: var(--red);
+      width: 12px; height: 12px; background: var(--red);
       border: 2px solid #fff; border-radius: 50%;
-      box-shadow: 0 0 10px rgba(255,68,68,0.8);
+      box-shadow: 0 0 12px rgba(255,68,68,0.95), 0 0 4px rgba(255,100,100,0.5);
       animation: pulse-red 1.4s ease-in-out infinite;
     }
     .pin-green {
-      width: 18px; height: 18px; background: var(--teal);
+      width: 14px; height: 14px; background: var(--teal);
       border: 2px solid #fff; border-radius: 50%;
-      box-shadow: 0 0 14px rgba(0,212,170,0.9);
+      box-shadow: 0 0 14px rgba(0,212,170,0.95), 0 0 6px rgba(0,212,170,0.5);
       animation: pulse-green 1s ease-in-out infinite;
     }
     .pin-green.hard { animation: pulse-green-hard 0.7s ease-in-out infinite; }
     @keyframes pulse-red { 50% { transform: scale(1.25); } }
     @keyframes pulse-green { 50% { transform: scale(1.15); } }
     @keyframes pulse-green-hard { 50% { transform: scale(1.35); box-shadow: 0 0 22px rgba(0,212,170,1); } }
+    .user-loc-pin {
+      display: flex; flex-direction: column; align-items: center; gap: 5px;
+      pointer-events: auto;
+    }
+    .user-loc-ring {
+      width: 44px; height: 44px; border-radius: 50%;
+      border: 2px solid rgba(59,130,246,0.55);
+      background: rgba(59,130,246,0.12);
+      display: flex; align-items: center; justify-content: center;
+      animation: user-ring 2.4s ease-in-out infinite;
+    }
+    @keyframes user-ring {
+      50% { transform: scale(1.08); border-color: rgba(59,130,246,0.9); background: rgba(59,130,246,0.2); }
+    }
+    .user-loc-dot {
+      width: 14px; height: 14px; background: #fff;
+      border: 3px solid var(--blue); border-radius: 50%;
+      box-shadow: 0 0 12px rgba(59,130,246,1);
+    }
+    .user-loc-label {
+      font-size: 11px; font-weight: 800; letter-spacing: 0.05em;
+      text-transform: uppercase; color: #fff;
+      background: var(--blue); padding: 3px 9px; border-radius: 8px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.45);
+      white-space: nowrap;
+    }
+    @keyframes user-pulse {
+      50% { box-shadow: 0 0 0 10px rgba(59,130,246,0.12), 0 0 20px rgba(59,130,246,1); }
+    }
+    .pin-community {
+      width: 16px; height: 16px; background: var(--amber);
+      border: 2px solid #fff; border-radius: 50%;
+      box-shadow: 0 0 12px rgba(245,158,11,0.85);
+    }
+    .pin-reported { opacity: 0.45; filter: grayscale(0.6); }
+    .map-toolbar {
+      position: absolute; left: 12px; z-index: 600;
+      bottom: calc(36% + 14px);
+      display: flex; align-items: center; gap: 0;
+      border-radius: 14px; overflow: hidden;
+      border: 1px solid var(--border);
+      background: rgba(19,19,26,0.94);
+      backdrop-filter: blur(14px);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.45);
+    }
+    .map-toolbar button {
+      width: 42px; height: 42px; border: none; background: transparent;
+      color: var(--text); font-size: 17px; cursor: pointer; font-family: inherit;
+    }
+    .map-toolbar button:hover { background: rgba(255,255,255,0.06); color: var(--teal); }
+    .map-toolbar button.active {
+      background: rgba(0,212,170,0.2); color: var(--teal);
+    }
+    .map-toolbar .tb-sep { width: 1px; height: 24px; background: var(--border); }
+    .map-box.has-sheet .leaflet-bottom.leaflet-right { bottom: 12px !important; }
+    .map-add-hint {
+      position: absolute; left: 12px; right: 12px; bottom: calc(36% + 16px);
+      z-index: 600; padding: 10px 14px; border-radius: 12px;
+      background: rgba(245,158,11,0.15); border: 1px solid rgba(245,158,11,0.45);
+      font-size: 12px; font-weight: 600; text-align: center; display: none;
+    }
+    .map-add-hint.show { display: block; }
+    .crowd-pin {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: linear-gradient(145deg, #7c3aed, #a855f7);
+      border: 2px solid #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; box-shadow: 0 0 16px rgba(168,85,247,0.75);
+      animation: crowd-pulse 1.6s ease-in-out infinite;
+    }
+    @keyframes crowd-pulse {
+      50% { transform: scale(1.12); box-shadow: 0 0 22px rgba(168,85,247,1); }
+    }
+    .crowd-live-banner {
+      display: none;
+      position: absolute; right: 12px; z-index: 600; top: 100px;
+      max-width: 168px; padding: 8px 12px; border-radius: 12px;
+      background: rgba(124,58,237,0.18); border: 1px solid rgba(168,85,247,0.5);
+      font-size: 11px; font-weight: 700; color: #c4b5fd;
+      backdrop-filter: blur(10px); cursor: pointer; line-height: 1.35;
+    }
+    .crowd-live-banner .live-dot {
+      display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+      background: #a855f7; margin-right: 5px; animation: pulse-green 1s infinite;
+    }
+    .crowd-sheet-title {
+      font-size: 12px; font-weight: 700; color: #c4b5fd;
+      margin: 14px 0 8px; text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .crowd-row {
+      display: flex; gap: 10px; padding: 10px 0;
+      border-bottom: 1px solid var(--border); cursor: pointer;
+      align-items: flex-start;
+    }
+    .crowd-row:last-child { border-bottom: none; }
+    .crowd-row .cr-ico { font-size: 20px; flex-shrink: 0; }
+    .crowd-row b { display: block; font-size: 13px; }
+    .crowd-row span { font-size: 11px; color: var(--muted); line-height: 1.4; }
+    .crowd-row .cr-eta { font-size: 10px; color: #c4b5fd; font-weight: 700; margin-top: 2px; }
+    .leaflet-popup-content .crowd-live-tag {
+      display: inline-block; font-size: 10px; font-weight: 800;
+      color: #c4b5fd; background: rgba(124,58,237,0.2);
+      padding: 2px 8px; border-radius: 6px; margin-bottom: 6px;
+    }
+
+    .popup-btn-outline {
+      display: block; width: 100%; margin-top: 8px; padding: 9px;
+      background: transparent; color: var(--muted); border: 1px solid var(--border);
+      border-radius: 10px; font-weight: 600; font-size: 12px;
+      cursor: pointer; font-family: inherit; min-height: 40px;
+    }
+    #qr-wrap {
+      display: flex; align-items: center; justify-content: center;
+      margin: 16px auto; padding: 14px;
+      background: linear-gradient(145deg, #0d0d14, #16161f);
+      border: 1px solid rgba(0,212,170,0.25);
+      border-radius: 16px;
+    }
+    .qr-brand { font-size: 12px; font-weight: 700; color: var(--teal); margin-top: 8px; }
+
+    #add-spot-modal {
+      position: fixed; inset: 0; z-index: 10000;
+      background: rgba(0,0,0,0.82);
+      display: none; align-items: flex-end; justify-content: center;
+      padding: 16px; padding-bottom: max(16px, env(safe-area-inset-bottom));
+    }
+    #add-spot-modal.show { display: flex; }
+    .add-spot-sheet {
+      width: 100%; max-width: 360px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px 20px 16px 16px;
+      padding: 20px 20px 24px;
+      box-shadow: 0 -12px 48px rgba(0,0,0,0.55);
+      animation: sheet-up 0.28s ease-out;
+    }
+    @keyframes sheet-up {
+      from { transform: translateY(24px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    .add-spot-sheet .handle-bar {
+      width: 40px; height: 4px; border-radius: 2px;
+      background: rgba(255,255,255,0.15); margin: 0 auto 16px;
+    }
+    .add-spot-sheet h3 {
+      font-size: 18px; font-weight: 800; margin-bottom: 4px;
+    }
+    .add-spot-sheet .sub {
+      font-size: 12px; color: var(--muted); margin-bottom: 16px; line-height: 1.45;
+    }
+    .add-spot-sheet label {
+      display: block; font-size: 11px; font-weight: 700;
+      color: var(--muted); text-transform: uppercase;
+      letter-spacing: 0.05em; margin-bottom: 6px;
+    }
+    .add-spot-sheet input {
+      width: 100%; padding: 12px 14px; border-radius: 12px;
+      border: 1px solid var(--border); background: var(--bg);
+      color: var(--text); font-family: inherit; font-size: 15px;
+      margin-bottom: 14px;
+    }
+    .add-spot-sheet input:focus {
+      outline: none; border-color: rgba(0,212,170,0.5);
+      box-shadow: 0 0 0 3px rgba(0,212,170,0.12);
+    }
+    .avail-pick {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px;
+    }
+    .avail-pick button {
+      padding: 12px; border-radius: 12px; border: 1px solid var(--border);
+      background: var(--bg); color: var(--muted); font-weight: 700;
+      font-size: 13px; cursor: pointer; font-family: inherit;
+    }
+    .avail-pick button.selected-free {
+      border-color: var(--teal); background: rgba(0,212,170,0.15); color: var(--teal);
+    }
+    .avail-pick button.selected-busy {
+      border-color: var(--red); background: rgba(255,68,68,0.12); color: #ff8888;
+    }
+    .add-spot-actions { display: flex; gap: 10px; }
+    .add-spot-actions .btn { flex: 1; margin: 0; }
     .seeker-dot {
       width: 14px; height: 14px; background: var(--blue);
       border: 2px solid #fff; border-radius: 50%;
       box-shadow: 0 0 12px rgba(59,130,246,0.9);
     }
+
+    .ae-cluster-wrap { background: none !important; border: none !important; }
+    .ae-cluster {
+      width: 100%; height: 100%; border-radius: 50%;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      background: rgba(19,19,26,0.94); border: 2px solid #FF4444;
+      box-shadow: 0 0 20px rgba(0,0,0,0.5);
+      color: #F0F0F0; font-weight: 800; line-height: 1.1;
+    }
+    .ae-cluster.has-free { border-color: #00D4AA; box-shadow: 0 0 18px rgba(0,212,170,0.35); }
+    .ae-cluster-n { font-size: 15px; }
+    .ae-cluster-sub { font-size: 9px; font-weight: 700; color: #00D4AA; margin-top: 1px; }
+    .marker-cluster-small, .marker-cluster-medium, .marker-cluster-large { background: transparent; }
     .leaflet-popup-content-wrapper {
       background: var(--surface); color: var(--text);
       border: 1px solid var(--border); border-radius: 12px;
       box-shadow: 0 8px 32px rgba(0,0,0,0.5);
     }
     .leaflet-popup-tip { background: var(--surface); }
+    .leaflet-popup-content { margin: 12px 14px; font-size: 13px; line-height: 1.45; }
+    .leaflet-control-zoom a {
+      background: var(--surface) !important;
+      color: var(--text) !important;
+      border-color: var(--border) !important;
+      width: 36px !important;
+      height: 36px !important;
+      line-height: 36px !important;
+      font-size: 18px !important;
+    }
+    .leaflet-control-zoom a:hover { background: #1c1c26 !important; color: var(--teal) !important; }
+    .map-box.has-sheet .leaflet-bottom.leaflet-right { bottom: calc(36% + 8px) !important; }
+    .map-find .leaflet-bottom.leaflet-right { bottom: 8px !important; }
+    .nav-map .leaflet-bottom.leaflet-right { bottom: 140px !important; }
     .popup-btn {
       display: block; width: 100%; margin-top: 10px; padding: 10px;
       background: var(--teal); color: var(--bg); border: none;
@@ -143,15 +417,87 @@
       background: rgba(10,10,15,0.85);
       backdrop-filter: blur(16px);
       border-bottom: 1px solid var(--border);
+      pointer-events: none;
     }
-    .logo-sm { font-weight: 900; font-size: 20px; color: var(--teal); }
+    .top-bar > * { pointer-events: auto; }
     .top-right { display: flex; align-items: center; gap: 10px; }
     .avatar {
       width: 36px; height: 36px; border-radius: 50%;
       background: linear-gradient(135deg, var(--blue), #1d4ed8);
       display: flex; align-items: center; justify-content: center;
       font-weight: 700; font-size: 13px;
+      border: none; cursor: pointer; padding: 0;
+      font-family: inherit; color: #fff;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
     }
+    .avatar:hover { transform: scale(1.06); box-shadow: 0 0 0 2px rgba(0,212,170,0.45); }
+    .avatar.guest { background: var(--surface); color: var(--muted); border: 1px solid var(--border); }
+    #screen-6 .scroll-body { padding: 16px; }
+    .profile-hero {
+      text-align: center; padding: 28px 16px 24px;
+      background: linear-gradient(160deg, rgba(0,212,170,0.12), rgba(59,130,246,0.08));
+      border: 1px solid var(--border); border-radius: 16px; margin-bottom: 20px;
+    }
+    .profile-hero .ph-avatar {
+      width: 72px; height: 72px; border-radius: 50%; margin: 0 auto 12px;
+      background: linear-gradient(135deg, var(--blue), #1d4ed8);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 26px; font-weight: 800; color: #fff;
+      box-shadow: 0 8px 24px rgba(59,130,246,0.35);
+    }
+    .profile-hero .ph-name { font-size: 20px; font-weight: 800; }
+    .profile-hero .ph-email { font-size: 13px; color: var(--muted); margin-top: 4px; }
+    .profile-hero .ph-tag {
+      display: inline-block; margin-top: 10px; font-size: 11px; font-weight: 700;
+      color: var(--teal); background: rgba(0,212,170,0.12);
+      padding: 4px 10px; border-radius: 20px;
+    }
+    .profile-stats {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px;
+    }
+    .profile-stat {
+      text-align: center; padding: 14px 8px;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    }
+    .profile-stat b { display: block; font-size: 20px; font-weight: 800; color: var(--teal); margin-bottom: 4px; }
+    .profile-stat span { font-size: 11px; color: var(--muted); }
+    .profile-section { margin-bottom: 20px; }
+    .profile-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 0; border-bottom: 1px solid var(--border);
+      font-size: 14px; min-height: 48px;
+    }
+    .profile-row:last-child { border-bottom: none; }
+    .profile-row .lbl { color: var(--muted); font-size: 12px; }
+    .login-card {
+      padding: 20px; border-radius: 16px;
+      background: var(--surface); border: 1px solid var(--border);
+    }
+    .login-card h3 { font-size: 18px; font-weight: 800; margin-bottom: 6px; }
+    .login-card .sub { font-size: 13px; color: var(--muted); margin-bottom: 18px; line-height: 1.45; }
+    .login-form { display: flex; flex-direction: column; gap: 12px; }
+    .login-form label { font-size: 12px; font-weight: 600; color: var(--muted); }
+    .login-form input {
+      width: 100%; padding: 12px 14px; border-radius: 12px;
+      border: 1px solid var(--border); background: var(--bg);
+      color: var(--text); font-family: inherit; font-size: 16px;
+    }
+    .login-form input:focus {
+      outline: none; border-color: rgba(0,212,170,0.5);
+      box-shadow: 0 0 0 3px rgba(0,212,170,0.12);
+    }
+    .login-guest {
+      display: block; width: 100%; margin-top: 10px;
+      background: none; border: none; color: var(--muted);
+      font-size: 13px; font-weight: 600; cursor: pointer;
+      padding: 12px; font-family: inherit;
+    }
+    .login-guest:hover { color: var(--teal); }
+    .btn-logout {
+      background: rgba(255,68,68,0.12); color: #ff8888;
+      border: 1px solid rgba(255,68,68,0.35);
+    }
+    .btn-logout:hover { background: rgba(255,68,68,0.2); }
     .pts-badge {
       font-size: 12px; font-weight: 700; color: var(--bg);
       background: var(--amber); padding: 4px 10px;
@@ -159,6 +505,7 @@
     }
     .ai-live {
       position: absolute; top: 64px; right: 12px; z-index: 500;
+      pointer-events: none;
       font-size: 11px; font-weight: 700; padding: 8px 12px;
       border-radius: 20px; background: rgba(19,19,26,0.92);
       border: 1px solid rgba(0,212,170,0.4);
@@ -178,10 +525,27 @@
       border-radius: 20px 20px 0 0;
       padding: 12px 16px 16px;
       overflow-y: auto;
+      transition: height 0.3s ease, min-height 0.3s ease;
+      -webkit-overflow-scrolling: touch;
+    }
+    .bottom-sheet.collapsed {
+      height: 72px; min-height: 72px;
+      overflow: hidden;
+    }
+    .bottom-sheet.collapsed .sheet-body { display: none; }
+    .bottom-sheet.collapsed .sheet-hint { display: block; }
+    .sheet-hint {
+      display: none; font-size: 12px; color: var(--muted);
+      text-align: center; margin-top: 4px;
     }
     .sheet-handle {
-      width: 40px; height: 4px; background: rgba(255,255,255,0.2);
-      border-radius: 2px; margin: 0 auto 12px;
+      width: 48px; height: 28px; margin: 0 auto 8px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; touch-action: manipulation;
+    }
+    .sheet-handle::before {
+      content: ''; width: 40px; height: 4px;
+      background: rgba(255,255,255,0.25); border-radius: 2px;
     }
     .sheet-title { font-weight: 700; font-size: 16px; }
     .occ-label { font-size: 12px; color: var(--muted); margin: 8px 0 6px; }
@@ -384,10 +748,10 @@
     .pts-red { color: var(--red); }
     .rewards-scroll {
       display: flex; gap: 12px; overflow-x: auto;
-      padding-bottom: 8px; scroll-snap-type: x mandatory;
+      padding-bottom: 10px; scroll-snap-type: x mandatory;
       -webkit-overflow-scrolling: touch;
+      scrollbar-color: var(--scrollbar-thumb) transparent;
     }
-    .rewards-scroll::-webkit-scrollbar { display: none; }
     .reward-card {
       flex: 0 0 75%; scroll-snap-align: start;
       padding: 16px; min-height: 160px;
@@ -412,7 +776,7 @@
     }
     .nav-item {
       flex: 1; background: none; border: none;
-      color: var(--muted); font-size: 11px; font-weight: 600;
+      color: var(--muted); font-size: 10px; font-weight: 600;
       cursor: pointer; padding: 8px 4px; min-height: 52px;
       font-family: inherit;
     }
@@ -434,6 +798,233 @@
     #qr-canvas { display: block; margin: 16px auto; border-radius: 8px; }
     .qr-expiry { color: var(--teal); font-weight: 600; margin-top: 12px; }
     input, select, textarea { font-size: 16px; }
+
+    .demo-btn-top {
+      font-size: 11px; font-weight: 700; padding: 6px 10px;
+      border-radius: 8px; border: 1px solid rgba(0,212,170,0.5);
+      background: rgba(0,212,170,0.12); color: var(--teal);
+      cursor: pointer; font-family: inherit; min-height: 32px;
+    }
+    .demo-btn-top:disabled { opacity: 0.4; cursor: not-allowed; }
+    .phone.demo-active .bottom-nav,
+    .phone.demo-active .nav-item { pointer-events: none; opacity: 0.45; }
+    .phone.demo-active .back-btn { pointer-events: none; opacity: 0.35; }
+    .phone.demo-active .crowd-live-banner,
+    .phone.demo-active .ai-live,
+    .phone.demo-active .map-toolbar,
+    .phone.demo-active .leaflet-popup {
+      opacity: 0 !important;
+      pointer-events: none !important;
+      transition: opacity 0.2s ease;
+    }
+    .phone.demo-active #screen-2 .option-btn,
+    .phone.demo-active #screen-2 .detect-card,
+    .phone.demo-active #demo-target-share-success .btn,
+    .phone.demo-active #screen-3 .ai-panel,
+    .phone.demo-active #screen-3 .btn.btn-amber,
+    .phone.demo-active #screen-3 .urgency,
+    .phone.demo-active #screen-4 .turn-strip,
+    .phone.demo-active #screen-4 .cancel-link { display: none !important; }
+    .phone.demo-active .map-find { flex: 1 1 auto; min-height: 220px; }
+
+    #demo-ui {
+      position: absolute; inset: 0; z-index: 2000;
+      pointer-events: none; display: none;
+    }
+    #demo-ui.active { display: block; }
+    #demo-ui .demo-progress {
+      position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: rgba(255,255,255,0.08); z-index: 2001;
+    }
+    #demo-progress-fill {
+      height: 100%; width: 0%; background: var(--teal);
+      transition: width 0.15s linear;
+      box-shadow: 0 0 12px rgba(0,212,170,0.6);
+    }
+    #demo-spotlight {
+      position: absolute; border: 2px solid var(--teal);
+      border-radius: 14px; box-shadow: 0 0 0 9999px rgba(0,0,0,0.72);
+      transition: top 0.45s ease, left 0.45s ease, width 0.45s ease, height 0.45s ease;
+      opacity: 0; pointer-events: none; z-index: 2002;
+    }
+    #demo-spotlight.show { opacity: 1; }
+    #demo-coach {
+      position: absolute; left: 12px; right: 12px;
+      padding: 12px 14px; border-radius: 14px;
+      background: rgba(19,19,26,0.96); border: 1px solid rgba(0,212,170,0.45);
+      text-align: left; z-index: 2003;
+      transform: translateY(8px); opacity: 0;
+      transition: top 0.4s ease, bottom 0.4s ease, transform 0.35s ease, opacity 0.35s ease;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+      bottom: 20px; top: auto;
+      max-height: 32%;
+      overflow-y: auto;
+    }
+    #demo-coach.show { transform: translateY(0); opacity: 1; }
+    #demo-coach.coach-hide { opacity: 0 !important; pointer-events: none !important; }
+    #demo-coach.coach-top { top: 88px; bottom: auto; }
+    #demo-coach.coach-below-header { top: 48px; bottom: auto; }
+    #demo-coach.coach-above-sheet { bottom: calc(38% + 72px); top: auto; }
+    #demo-coach.coach-find { top: 48px; bottom: auto; }
+    #demo-coach.coach-scroll { bottom: 92px; top: auto; }
+    #demo-coach.coach-dynamic { transition: top 0.35s ease, bottom 0.35s ease, opacity 0.35s ease; }
+    #demo-coach h4 { font-size: 15px; font-weight: 700; color: var(--teal); }
+    #demo-coach p { font-size: 13px; color: var(--muted); margin-top: 6px; line-height: 1.45; }
+    #demo-skip {
+      position: absolute; top: 12px; right: 12px; z-index: 2004;
+      pointer-events: auto; padding: 8px 14px; border-radius: 10px;
+      border: 1px solid var(--border); background: rgba(19,19,26,0.9);
+      color: var(--text); font-size: 12px; font-weight: 600;
+      cursor: pointer; font-family: inherit;
+    }
+    .pin-demo-pulse {
+      animation: demo-pin-flash 0.9s ease-in-out infinite !important;
+      box-shadow: 0 0 20px rgba(0,212,170,1) !important;
+    }
+    .pin-red.pin-demo-pulse {
+      box-shadow: 0 0 18px rgba(255,68,68,1) !important;
+    }
+    @keyframes demo-pin-flash {
+      50% { transform: scale(1.45); }
+    }
+    .pin-wrap.pin-demo-target { z-index: 900 !important; }
+    .sheet-streets { max-height: 120px; overflow-y: auto; }
+    .pin-amber {
+      width: 14px; height: 14px; background: var(--amber);
+      border: 2px solid #fff; border-radius: 50%;
+      box-shadow: 0 0 10px rgba(245,158,11,0.8);
+    }
+
+    .ach-count-badge {
+      font-size: 11px; font-weight: 700; color: var(--amber);
+      background: rgba(245,158,11,0.12); padding: 3px 8px;
+      border-radius: 8px; margin-left: 6px; vertical-align: middle;
+    }
+    .achievements-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 10px; margin-bottom: 20px;
+    }
+    .achievement-card {
+      padding: 12px 8px; border-radius: 12px; text-align: center;
+      background: var(--surface); border: 1px solid var(--border);
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+    .achievement-card.unlocked {
+      border-color: rgba(0,212,170,0.45);
+      background: rgba(0,212,170,0.06);
+    }
+    .achievement-card.locked { opacity: 0.45; filter: grayscale(0.35); }
+    .achievement-card .ach-ico { font-size: 26px; line-height: 1; display: block; }
+    .achievement-card .ach-name {
+      font-size: 10px; font-weight: 700; margin-top: 6px; line-height: 1.25;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .achievement-card .ach-pts {
+      font-size: 9px; color: var(--teal); font-weight: 700; margin-top: 4px;
+    }
+    .ach-wallet-strip {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 16px; margin-bottom: 18px; cursor: pointer;
+    }
+    .ach-wallet-strip:active { opacity: 0.9; }
+    .ach-wallet-strip .aws-ico { font-size: 28px; }
+    .ach-wallet-strip b { display: block; font-size: 14px; }
+    .ach-wallet-strip span { font-size: 12px; color: var(--muted); }
+    .achievement-toast {
+      position: absolute; left: 12px; right: 12px; top: 56px; z-index: 2500;
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 14px; border-radius: 14px;
+      background: rgba(19,19,26,0.98); border: 1px solid rgba(0,212,170,0.55);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.55);
+      transform: translateY(-120%); opacity: 0;
+      transition: transform 0.45s cubic-bezier(0.34, 1.4, 0.64, 1), opacity 0.35s ease;
+      pointer-events: none;
+    }
+    .achievement-toast.show {
+      transform: translateY(0); opacity: 1;
+    }
+    .achievement-toast .ach-toast-icon { font-size: 32px; }
+    .achievement-toast b { display: block; font-size: 14px; color: var(--teal); }
+    .achievement-toast span { font-size: 12px; color: var(--muted); line-height: 1.35; }
+    .achievement-toast .ach-toast-pts {
+      display: block; font-size: 11px; color: var(--amber); font-weight: 700; margin-top: 4px;
+    }
+
+    .co2-wallet-strip {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 16px; margin-bottom: 18px; cursor: pointer;
+      background: linear-gradient(135deg, rgba(34,197,94,0.12), rgba(0,212,170,0.08));
+      border-color: rgba(34,197,94,0.35);
+    }
+    .co2-wallet-strip:active { opacity: 0.92; }
+    .co2-wallet-strip .cws-ico { font-size: 28px; }
+    .co2-wallet-strip b { display: block; font-size: 14px; }
+    .co2-wallet-strip span { font-size: 12px; color: var(--muted); }
+
+    #screen-7 .scroll-body { padding: 14px 16px 24px; }
+    .co2-hero {
+      border-radius: 1rem; padding: 20px 18px; margin-bottom: 16px;
+      background: linear-gradient(145deg, #166534, #22c55e 45%, #00D4AA);
+      color: #ecfdf5; position: relative; overflow: hidden;
+    }
+    .co2-hero::after {
+      content: ''; position: absolute; right: -20px; top: -20px;
+      width: 120px; height: 120px; border-radius: 50%;
+      background: rgba(255,255,255,0.08);
+    }
+    .co2-hero .co2-big {
+      font-size: 48px; font-weight: 900; line-height: 1; letter-spacing: -1px;
+    }
+    .co2-hero .co2-unit { font-size: 18px; font-weight: 700; opacity: 0.9; }
+    .co2-hero .co2-sub { font-size: 13px; margin-top: 8px; opacity: 0.92; line-height: 1.4; }
+    .co2-equiv {
+      display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap;
+    }
+    .co2-equiv .eq {
+      flex: 1; min-width: 100px; padding: 12px; border-radius: 12px;
+      background: var(--surface); border: 1px solid var(--border); text-align: center;
+    }
+    .co2-equiv .eq .eq-n { font-size: 18px; font-weight: 800; color: #4ade80; }
+    .co2-equiv .eq .eq-l { font-size: 10px; color: var(--muted); margin-top: 4px; line-height: 1.3; }
+    .co2-period {
+      display: flex; gap: 8px; margin-bottom: 12px;
+    }
+    .co2-period button {
+      flex: 1; padding: 8px 10px; border-radius: 10px;
+      border: 1px solid var(--border); background: var(--surface);
+      color: var(--muted); font-size: 12px; font-weight: 700;
+      cursor: pointer; font-family: inherit;
+    }
+    .co2-period button.active {
+      background: rgba(34,197,94,0.15); border-color: rgba(34,197,94,0.5); color: #4ade80;
+    }
+    .leaderboard-card { padding: 4px 0; margin-bottom: 16px; }
+    .lb-row {
+      display: grid; grid-template-columns: 32px 1fr auto;
+      gap: 8px 10px; align-items: center; padding: 12px 14px;
+      border-bottom: 1px solid var(--border); font-size: 13px;
+    }
+    .lb-row:last-child { border-bottom: none; }
+    .lb-row.you {
+      background: rgba(0,212,170,0.08);
+      border-left: 3px solid var(--teal);
+    }
+    .lb-rank {
+      width: 28px; height: 28px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 800; background: rgba(255,255,255,0.06);
+      color: var(--muted);
+    }
+    .lb-row:nth-child(1) .lb-rank { background: rgba(245,158,11,0.2); color: var(--amber); }
+    .lb-row:nth-child(2) .lb-rank { background: rgba(192,192,192,0.15); color: #d4d4d4; }
+    .lb-row:nth-child(3) .lb-rank { background: rgba(180,120,80,0.2); color: #d4a574; }
+    .lb-hood b { display: block; font-weight: 700; }
+    .lb-hood span { font-size: 11px; color: var(--muted); }
+    .lb-kg { text-align: right; font-weight: 800; color: #4ade80; font-size: 14px; }
+    .lb-kg small { display: block; font-size: 10px; font-weight: 600; color: var(--muted); }
+    .co2-foot {
+      font-size: 11px; color: var(--muted); line-height: 1.45; padding: 0 4px 8px;
+    }
   </style>
 </head>
 <body>
@@ -443,7 +1034,7 @@
 
         <!-- SCREEN 0: Splash -->
         <section id="screen-0" class="screen active">
-          <p class="splash-logo">Ae!</p>
+          <img src="Ae_mini_ikona.png" alt="Ae!" class="splash-logo app-icon" width="168" height="168" />
           <p class="splash-tag">Split dišpet. Zero concrete.</p>
           <p class="splash-sub">Crowdsourced parking for Split's neighborhoods.</p>
           <div class="splash-dots"><span></span><span></span><span></span></div>
@@ -451,30 +1042,42 @@
 
         <!-- SCREEN 1: Map -->
         <section id="screen-1" class="screen">
-          <div class="map-box">
+          <div class="map-box has-sheet">
             <div id="map-1" class="leaflet-map"></div>
             <header class="top-bar">
-              <span class="logo-sm">Ae!</span>
+              <img src="Ae_mini_ikona_navbar.png" alt="Ae!" class="logo-sm app-icon" width="32" height="32" />
               <div class="top-right">
-                <div class="avatar">LK</div>
-                <span class="pts-badge" id="pts-top">47 pts</span>
+                <button type="button" id="demo-start-btn" class="demo-btn-top" onclick="App.startDemo()">▶ Demo</button>
+                <button type="button" class="avatar" id="profile-btn" onclick="App.openProfile()" aria-label="Profil">LK</button>
+                <span class="pts-badge" id="pts-top">47 Gušti</span>
               </div>
             </header>
+
+            <div id="crowd-live-banner" class="crowd-live-banner" onclick="App.toggleSheet()" role="status">
+              <span class="live-dot" aria-hidden="true"></span><span id="crowd-banner-text">4 live crowds</span>
+            </div>
+            <div class="map-toolbar" role="toolbar" aria-label="Map tools">
+              <button type="button" id="btn-my-location" title="My location — Centar, Split" onclick="App.centerOnUser()">📍</button>
+              <span class="tb-sep" aria-hidden="true"></span>
+              <button type="button" id="btn-add-spot" title="Add Misto" onclick="App.toggleAddSpotMode()">➕</button>
+            </div>
+            <div id="map-add-hint" class="map-add-hint">Tap the map to mark a new parking spot</div>
             <div class="ai-live"><span class="ai-dot"></span> ◉ AI LIVE</div>
-            <div class="bottom-sheet">
-              <div class="sheet-handle"></div>
-              <p class="sheet-title">Split 3 — 20:15h</p>
-              <p class="occ-label">6 of 7 spots taken</p>
-              <div class="occ-bar"><div class="occ-red"></div><div class="occ-teal"></div></div>
-              <div class="street-row" onclick="App.go(3)">
-                <span>✅ Matice Hrvatske</span>
-                <span class="badge-teal">1 available</span>
-              </div>
-              <div class="street-row"><span>🔴 Domovinskog rata</span><span style="color:var(--muted)">Full</span></div>
-              <div class="street-row"><span>🔴 Šoltanska ul.</span><span style="color:var(--muted)">Full</span></div>
-              <div class="cta-row">
-                <button type="button" class="btn btn-teal" onclick="App.go(2)">🚗 I'm Leaving</button>
+            <div class="bottom-sheet" id="map-sheet">
+              <div class="sheet-handle" onclick="App.toggleSheet()" role="button" aria-label="Toggle panel"></div>
+              <p class="sheet-hint">Tap to see streets &amp; actions · pinch map to zoom</p>
+              <div class="sheet-body">
+              <p class="sheet-title">Split — 20:15h</p>
+              <p class="occ-label" id="occ-label">18 of 19 spots taken</p>
+              <div class="occ-bar" id="occ-bar"><div class="occ-red" id="occ-red"></div><div class="occ-teal" id="occ-teal"></div></div>
+
+              <p class="crowd-sheet-title" id="crowd-sheet-heading">Live crowds</p>
+              <div id="crowd-sheet-list"></div>
+              <div class="sheet-streets" id="sheet-streets"></div>
+              <div class="cta-row" id="demo-target-leaving-row">
+                <button type="button" id="demo-target-leaving" class="btn btn-teal" onclick="App.go(2)">🚗 I'm Leaving</button>
                 <button type="button" class="btn btn-outline" onclick="App.go(3)">🔍 Find a Misto</button>
+              </div>
               </div>
             </div>
           </div>
@@ -489,7 +1092,7 @@
           <div class="scroll-body" style="position:relative">
             <div class="card location-card">
               <span>📍</span>
-              <p class="addr">Matice Hrvatske 14, Split 3</p>
+              <p class="addr">Marmontova 12, Centar</p>
               <p class="sub">Your current parking spot</p>
               <div class="thumb-map"><div id="map-2" class="leaflet-map"></div></div>
             </div>
@@ -504,11 +1107,11 @@
                 <p class="bt">Bluetooth connected to: Peugeot 308</p>
               </div>
             </div>
-            <button type="button" id="share-btn" class="btn btn-teal" onclick="App.shareSpot()">SHARE MY MISTO 🎯</button>
-            <div id="share-success" class="card success-card">
+            <button type="button" id="demo-target-share" class="btn btn-teal" onclick="App.shareSpot()">SHARE MY MISTO 🎯</button>
+            <div id="demo-target-share-success" class="card success-card">
               <p style="font-size:40px">✅</p>
               <h3>Spot shared!</h3>
-              <p style="color:var(--teal);font-weight:600;margin-top:6px">+10 Split-Polza points earned</p>
+              <p style="color:var(--teal);font-weight:600;margin-top:6px">You earned 10 Gušti</p>
               <p class="odometer" id="points-odo">47</p>
               <button type="button" class="btn btn-teal" onclick="App.go(1)">Back to Map</button>
             </div>
@@ -523,28 +1126,28 @@
             <button type="button" class="back-btn" onclick="App.go(1)" aria-label="Back">←</button>
             <span class="screen-title">Find Parking</span>
           </header>
-          <div class="notify-banner">
-            <p>🔔 New spot just opened 180m away!</p>
-            <p class="sub">Matice Hrvatske 14 · just now</p>
-            <button type="button" class="btn-white" onclick="App.go(4)">Claim it →</button>
+          <div class="notify-banner" id="demo-target-find-banner">
+            <p>🔔 Free spot nearby</p>
+            <p class="sub" id="find-banner-sub">Marmontova 8 · just now</p>
+            <button type="button" class="btn-white" onclick="App.claimSpot()">Claim it →</button>
           </div>
           <div class="map-find"><div id="map-3" class="leaflet-map"></div></div>
           <div class="ai-panel">
-            <p class="cap">AI Prediction — Split 3</p>
+            <p class="cap">AI Prediction — Split</p>
             <div class="prob-row">
-              <div class="prob-head"><span>Matice Hrvatske</span><span style="color:var(--teal)">78% · 1 available</span></div>
-              <div class="prob-bar"><div class="prob-fill" style="width:78%;background:var(--teal)"></div></div>
+              <div class="prob-head"><span>Centar</span><span style="color:var(--teal)">82% · 4 available</span></div>
+              <div class="prob-bar"><div class="prob-fill" style="width:82%;background:var(--teal)"></div></div>
             </div>
             <div class="prob-row">
-              <div class="prob-head"><span>Domovinskog rata</span><span style="color:var(--amber)">34%</span></div>
-              <div class="prob-bar"><div class="prob-fill" style="width:34%;background:var(--amber)"></div></div>
+              <div class="prob-head"><span>Spinut</span><span style="color:var(--amber)">42%</span></div>
+              <div class="prob-bar"><div class="prob-fill" style="width:42%;background:var(--amber)"></div></div>
             </div>
             <div class="prob-row">
-              <div class="prob-head"><span>Šoltanska ul.</span><span style="color:var(--red)">11%</span></div>
+              <div class="prob-head"><span>Firule</span><span style="color:var(--red)">11%</span></div>
               <div class="prob-bar"><div class="prob-fill" style="width:11%;background:var(--red)"></div></div>
             </div>
             <p style="font-size:11px;color:var(--muted);margin:10px 0 14px">Based on 2,847 trips analyzed in this area</p>
-            <button type="button" class="btn btn-amber" onclick="App.go(4)">CLAIM THIS MISTO — 5 pts</button>
+            <button type="button" class="btn btn-amber" onclick="App.claimSpot()">CLAIM THIS MISTO — 5 Gušti</button>
             <p class="urgency"><span class="dot"></span>2 people are looking at this spot</p>
           </div>
         </section>
@@ -556,14 +1159,14 @@
           </header>
           <div class="nav-map"><div id="map-4" class="leaflet-map"></div></div>
           <div class="nav-body">
-            <div class="card timer-card">
+            <div class="card timer-card" id="demo-target-nav-timer">
               <p class="lbl">🎯 Reserved! Arriving in:</p>
               <p class="timer-big" id="nav-timer">1:47</p>
-              <p style="font-weight:600;font-size:14px">Matice Hrvatske 14, Split 3</p>
+              <p style="font-weight:600;font-size:14px" id="nav-dest-label">Marmontova 8, Centar</p>
             </div>
             <div class="card turn-strip">
               <span class="arrow">↑</span>
-              <span>Head north on Ul. Domovinskog rata</span>
+              <span>Head north on Domovinskog rata</span>
             </div>
             <a class="cancel-link" onclick="App.go(1)">Cancel reservation</a>
           </div>
@@ -575,9 +1178,9 @@
             <h2 style="font-size:22px;font-weight:700;margin-top:16px">You parked! 🎉</h2>
             <p style="color:var(--muted);margin-top:8px;font-size:15px">Saved ~35 minutes of circling</p>
             <div class="stats-row">
-              <div class="stat">CO₂<br><b>🟢 -0.4kg</b></div>
+              <div class="stat">CO₂<br><b id="park-success-co2">🟢 -0.4kg</b></div>
               <div class="stat">Time<br><b>🟢 -35min</b></div>
-              <div class="stat">Cost<br><b>🟢 -5 pts</b></div>
+              <div class="stat">Cost<br><b>🟢 -5 Gušti</b></div>
             </div>
             <button type="button" class="btn btn-teal" style="margin-top:28px;max-width:260px" onclick="App.finishNav()">Back to Map</button>
           </div>
@@ -586,80 +1189,297 @@
         <!-- SCREEN 5: Wallet -->
         <section id="screen-5" class="screen">
           <header class="screen-header">
-            <span class="screen-title" style="margin-left:4px">💰 Split-Polza</span>
+            <span class="screen-title" style="margin-left:4px">Tvoji Gušti</span>
           </header>
           <div class="scroll-body">
-            <div class="wallet-hero">
+            <div class="wallet-hero" id="demo-target-wallet">
               <p class="bal" id="wallet-bal">47</p>
-              <p class="lbl">Split-Polza points</p>
+              <p class="lbl">Gušti</p>
               <div class="progress-thin"><div></div></div>
-              <p class="wallet-meta">13 pts to next reward</p>
-              <p class="wallet-meta">Earned this week: +28 pts</p>
+              <p class="wallet-meta">13 Gušti to next reward</p>
+              <p class="wallet-meta">Earned this week: +28 Gušti</p>
+            </div>
+            <div class="card co2-wallet-strip" id="co2-wallet-strip" onclick="App.go(7)" role="button" tabindex="0">
+              <span class="cws-ico">🌱</span>
+              <div>
+                <b id="co2-wallet-title">12.4 kg CO₂ saved</b>
+                <span id="co2-wallet-sub">Neighborhood leaderboard · tap to view</span>
+              </div>
+            </div>
+            <div class="card ach-wallet-strip" id="ach-wallet-strip" onclick="App.go(6)" role="button" tabindex="0">
+              <span class="aws-ico">🏅</span>
+              <div>
+                <b id="ach-wallet-title">Achievements</b>
+                <span id="ach-wallet-sub">Unlock badges · earn bonus Gušti</span>
+              </div>
             </div>
             <p class="section-title">Recent Activity</p>
             <div class="card" style="padding:4px 14px;margin-bottom:18px">
               <div class="activity-row">
-                <span>✅</span><span>Spot shared</span><span style="color:var(--muted)">Today 20:15</span><span class="pts pts-teal">+10 pts</span>
+                <span>✅</span><span>Spot shared</span><span style="color:var(--muted)">Today 20:15</span><span class="pts pts-teal">+10 Gušti</span>
               </div>
               <div class="activity-row">
-                <span>🔍</span><span>Spot reserved</span><span style="color:var(--muted)">Today 20:13</span><span class="pts pts-red">-5 pts</span>
+                <span>🔍</span><span>Spot reserved</span><span style="color:var(--muted)">Today 20:13</span><span class="pts pts-red">-5 Gušti</span>
               </div>
               <div class="activity-row">
-                <span>✅</span><span>Spot shared</span><span style="color:var(--muted)">Yesterday</span><span class="pts pts-teal">+10 pts</span>
+                <span>✅</span><span>Spot shared</span><span style="color:var(--muted)">Yesterday</span><span class="pts pts-teal">+10 Gušti</span>
               </div>
               <div class="activity-row" style="border:none">
-                <span>🚶</span><span>Digitalni Redar report</span><span style="color:var(--muted)">Tue 09:22</span><span class="pts pts-teal">+8 pts</span>
+                <span>🚶</span><span>Digitalni Redar report</span><span style="color:var(--muted)">Tue 09:22</span><span class="pts pts-teal">+8 Gušti</span>
               </div>
             </div>
-            <p class="section-title">Redeem Points</p>
-            <div class="rewards-scroll">
+            <p class="section-title">Spend your Gušti</p>
+            <div id="demo-target-wallet-rewards" class="rewards-scroll">
               <div class="card reward-card">
                 <span style="font-size:28px">☕</span>
                 <h4>Free Coffee</h4>
                 <p>Kafić Zlatna Vrata · 0.3km</p>
-                <span class="reward-badge">15 pts</span>
-                <button type="button" class="btn btn-outline" onclick="App.openQR('Kafić Zlatna Vrata')">Get QR Code →</button>
+                <span class="reward-badge">15 Gušti</span>
+                <button type="button" id="demo-target-qr-btn" class="btn btn-outline" onclick="App.openQR('Kafić Zlatna Vrata')">Get QR Code →</button>
               </div>
               <div class="card reward-card">
                 <span style="font-size:28px">🚌</span>
                 <h4>Promet Bus Ticket</h4>
                 <p>1 ride, any line</p>
-                <span class="reward-badge">20 pts</span>
-                <button type="button" class="btn btn-outline">Activate →</button>
+                <span class="reward-badge">20 Gušti</span>
+                <button type="button" class="btn btn-outline" onclick="App.openQR('Promet Split', 20, true)">Activate →</button>
               </div>
               <div class="card reward-card">
                 <span style="font-size:28px">🍕</span>
                 <h4>Pizza Slice</h4>
                 <p>Bruna Pizzeria · 0.8km</p>
-                <span class="reward-badge">35 pts</span>
+                <span class="reward-badge">35 Gušti</span>
                 <button type="button" class="btn btn-outline" onclick="App.openQR('Bruna Pizzeria')">Get QR Code →</button>
+              </div>
+              <div class="card reward-card">
+                <span style="font-size:28px">🥐</span>
+                <h4>Fresh Burek</h4>
+                <p>Pekara Hrvoje · Trstenik · 1.1km</p>
+                <span class="reward-badge">12 Gušti</span>
+                <button type="button" class="btn btn-outline" onclick="App.openQR('Pekara Hrvoje')">Get QR Code →</button>
+              </div>
+              <div class="card reward-card">
+                <span style="font-size:28px">🛒</span>
+                <h4>€3 off Groceries</h4>
+                <p>Konzum Trstenik · 0.9km</p>
+                <span class="reward-badge">25 Gušti</span>
+                <button type="button" class="btn btn-outline" onclick="App.openQR('Konzum Trstenik')">Get QR Code →</button>
+              </div>
+              <div class="card reward-card">
+                <span style="font-size:28px">🚲</span>
+                <h4>Nextbike Day Pass</h4>
+                <p>Unlimited 24h · city-wide</p>
+                <span class="reward-badge">30 Gušti</span>
+                <button type="button" class="btn btn-outline" onclick="App.openQR('Nextbike Split', 30, true)">Activate →</button>
+              </div>
+              <div class="card reward-card">
+                <span style="font-size:28px">🅿️</span>
+                <h4>1h Zone 3 Parking</h4>
+                <p>Split municipal · digital voucher</p>
+                <span class="reward-badge">18 Gušti</span>
+                <button type="button" class="btn btn-outline" onclick="App.openQR('Split Parking Zone 3', 18, true)">Activate →</button>
+              </div>
+              <div class="card reward-card">
+                <span style="font-size:28px">🍦</span>
+                <h4>Gelato Scoop</h4>
+                <p>Moritz Eis · Riva · 2.4km</p>
+                <span class="reward-badge">14 Gušti</span>
+                <button type="button" class="btn btn-outline" onclick="App.openQR('Moritz Eis Riva')">Get QR Code →</button>
+              </div>
+              <div class="card reward-card">
+                <span style="font-size:28px">💇</span>
+                <h4>€5 Haircut Credit</h4>
+                <p>Frizerski Studio Nina · 1.6km</p>
+                <span class="reward-badge">40 Gušti</span>
+                <button type="button" class="btn btn-outline" onclick="App.openQR('Frizerski Studio Nina')">Get QR Code →</button>
+              </div>
+              <div class="card reward-card">
+                <span style="font-size:28px">🍷</span>
+                <h4>Glass of House Wine</h4>
+                <p>Šugaman · Stari grad · 2.1km</p>
+                <span class="reward-badge">22 Gušti</span>
+                <button type="button" class="btn btn-outline" onclick="App.openQR('Šugaman')">Get QR Code →</button>
+              </div>
+              <div class="card reward-card">
+                <span style="font-size:28px">🥗</span>
+                <h4>Market Veg Box</h4>
+                <p>Pazar Split · green kvart bonus</p>
+                <span class="reward-badge">28 Gušti</span>
+                <button type="button" class="btn btn-outline" onclick="App.openQR('Pazar Split')">Get QR Code →</button>
+              </div>
+              <div class="card reward-card">
+                <span style="font-size:28px">⛴</span>
+                <h4>Catamaran -20%</h4>
+                <p>Split → Supetar · Jadrolinija</p>
+                <span class="reward-badge">45 Gušti</span>
+                <button type="button" class="btn btn-outline" onclick="App.openQR('Jadrolinija', 45, true)">Activate →</button>
+              </div>
+              <div class="card reward-card">
+                <span style="font-size:28px">🧴</span>
+                <h4>Car Wash Basic</h4>
+                <p>Auto SPA Firule · exterior rinse</p>
+                <span class="reward-badge">32 Gušti</span>
+                <button type="button" class="btn btn-outline" onclick="App.openQR('Auto SPA Firule')">Get QR Code →</button>
+              </div>
+              <div class="card reward-card">
+                <span style="font-size:28px">☀️</span>
+                <h4>Beach Umbrella 2h</h4>
+                <p>Bačvice · weekend partner</p>
+                <span class="reward-badge">24 Gušti</span>
+                <button type="button" class="btn btn-outline" onclick="App.openQR('Bačvice Beach', 24, true)">Activate →</button>
               </div>
             </div>
           </div>
         </section>
 
+        <!-- SCREEN 7: Impact / CO₂ -->
+        <section id="screen-7" class="screen">
+          <header class="screen-header">
+            <span class="screen-title" style="margin-left:4px">Impact</span>
+          </header>
+          <div class="scroll-body">
+            <div class="co2-hero" id="demo-target-co2-hero">
+              <p class="co2-unit">CO₂ avoided</p>
+              <p class="co2-big" id="co2-total">12.4</p>
+              <p class="co2-sub" id="co2-hero-sub">Less circling in Split · your kvart: <strong>Centar</strong></p>
+            </div>
+            <div class="co2-equiv" id="demo-target-co2-equiv">
+              <div class="eq">
+                <p class="eq-n" id="co2-eq-km">18</p>
+                <p class="eq-l">km not driven</p>
+              </div>
+              <div class="eq">
+                <p class="eq-n" id="co2-eq-min">52</p>
+                <p class="eq-l">min saved</p>
+              </div>
+              <div class="eq">
+                <p class="eq-n" id="co2-eq-trees">2</p>
+                <p class="eq-l">trees · 1 year</p>
+              </div>
+            </div>
+            <p class="section-title">Neighborhood leaderboard</p>
+            <div class="co2-period" role="tablist">
+              <button type="button" id="co2-tab-week" class="active" onclick="App.setCo2Period('week')">This week</button>
+              <button type="button" id="co2-tab-all" onclick="App.setCo2Period('all')">All time</button>
+            </div>
+            <div class="card leaderboard-card" id="demo-target-co2-board"></div>
+            <p class="co2-foot" id="co2-footnote">Rankings combine shared Misto, faster parking, and fewer circling trips. Updated live across Split.</p>
+          </div>
+        </section>
+
+        <!-- SCREEN 6: Profile -->
+        <section id="screen-6" class="screen">
+          <header class="screen-header">
+            <button type="button" class="back-btn" onclick="App.closeProfile()" aria-label="Back">←</button>
+            <span class="screen-title">Profil</span>
+          </header>
+          <div class="scroll-body">
+            <div id="profile-guest" class="login-card" style="display:none">
+              <h3>Prijavi se</h3>
+              <p class="sub">Mock login — any email works for the demo.</p>
+              <form class="login-form" onsubmit="App.mockLogin(event)">
+                <div>
+                  <label for="login-email">Email</label>
+                  <input type="email" id="login-email" placeholder="ime@email.hr" autocomplete="email" />
+                </div>
+                <div>
+                  <label for="login-pass">Password</label>
+                  <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password" />
+                </div>
+                <button type="submit" class="btn btn-teal" style="margin-top:4px">Sign in</button>
+              </form>
+              <button type="button" class="login-guest" onclick="App.closeProfile()">Continue as guest</button>
+            </div>
+            <div id="profile-logged">
+              <div class="profile-hero">
+                <div class="ph-avatar" id="profile-avatar-lg">LK</div>
+                <p class="ph-name" id="profile-name">Luka Kovač</p>
+                <p class="ph-email" id="profile-email">luka.kovac@email.hr</p>
+                <span class="ph-tag" id="profile-tier">Redar · Split</span>
+              </div>
+              <div class="profile-stats">
+                <div class="profile-stat"><b id="profile-stat-pts">47</b><span>Gušti</span></div>
+                <div class="profile-stat"><b id="profile-stat-shares">12</b><span>Shared</span></div>
+                <div class="profile-stat"><b id="profile-stat-reports">3</b><span>Reports</span></div>
+              </div>
+              <p class="section-title">Achievements <span class="ach-count-badge" id="ach-count-badge">0/12</span></p>
+              <div id="achievements-grid" class="achievements-grid"></div>
+              <div class="card profile-section" style="padding:4px 16px">
+                <div class="profile-row"><span>Home zone</span><span class="lbl">Centar, Split</span></div>
+                <div class="profile-row"><span>Vehicle</span><span class="lbl">Peugeot 308</span></div>
+                <div class="profile-row"><span>Member since</span><span class="lbl">Mar 2026</span></div>
+              </div>
+              <button type="button" class="btn btn-logout" onclick="App.mockLogout()">Log out</button>
+            </div>
+          </div>
+        </section>
+
+        <div id="demo-ui">
+          <div class="demo-progress"><div id="demo-progress-fill"></div></div>
+          <button type="button" id="demo-skip" onclick="App.stopDemo()">Skip demo</button>
+          <div id="demo-spotlight"></div>
+          <div id="demo-coach">
+            <h4 id="demo-coach-title">Ae! Guided Tour</h4>
+            <p id="demo-coach-text">Starting…</p>
+          </div>
+        </div>
+
       </div>
+
+        <div id="achievement-toast" class="achievement-toast" aria-live="polite">
+          <span class="ach-toast-icon" id="ach-toast-icon">🏅</span>
+          <div>
+            <b id="ach-toast-title">Achievement unlocked</b>
+            <span id="ach-toast-desc"></span>
+            <span class="ach-toast-pts" id="ach-toast-pts"></span>
+          </div>
+        </div>
 
       <nav class="bottom-nav" id="bottom-nav">
         <button type="button" class="nav-item" data-nav="1" onclick="App.go(1)"><span class="ico">🗺</span>Map</button>
         <button type="button" class="nav-item" data-nav="2" onclick="App.go(2)"><span class="ico">🚗</span>Leaving</button>
         <button type="button" class="nav-item" data-nav="3" onclick="App.go(3)"><span class="ico">🔍</span>Find</button>
-        <button type="button" class="nav-item" data-nav="5" onclick="App.go(5)"><span class="ico">💰</span>Wallet</button>
+        <button type="button" class="nav-item" data-nav="5" onclick="App.go(5)"><span class="ico">💰</span>Gušti</button>
+        <button type="button" class="nav-item" data-nav="7" onclick="App.go(7)"><span class="ico">🌱</span>Impact</button>
       </nav>
+    </div>
+  </div>
+
+  <div id="add-spot-modal" onclick="if(event.target===this)App.closeAddSpotModal()">
+    <div class="add-spot-sheet" onclick="event.stopPropagation()">
+      <div class="handle-bar" aria-hidden="true"></div>
+      <h3>Mark a new Misto</h3>
+      <p class="sub" id="add-spot-location-hint">Pin dropped on the map</p>
+      <label for="add-spot-street">Street</label>
+      <input type="text" id="add-spot-street" placeholder="e.g. Domovinskog rata" />
+      <label for="add-spot-num">Number / label</label>
+      <input type="text" id="add-spot-num" placeholder="e.g. 14" />
+      <label>Status</label>
+      <div class="avail-pick">
+        <button type="button" id="add-pick-free" class="selected-free" onclick="App.setAddSpotAvail(true)">✅ Free now</button>
+        <button type="button" id="add-pick-busy" onclick="App.setAddSpotAvail(false)">🔴 Taken</button>
+      </div>
+      <div class="add-spot-actions">
+        <button type="button" class="btn btn-outline" onclick="App.closeAddSpotModal()">Cancel</button>
+        <button type="button" class="btn btn-teal" onclick="App.submitAddSpot()">Add to map</button>
+      </div>
     </div>
   </div>
 
   <div id="qr-modal">
     <div class="modal-box">
-      <p style="font-weight:700;font-size:16px">Show this to the cashier</p>
+      <p id="qr-modal-title" style="font-weight:700;font-size:16px">Show this to the cashier</p>
       <p id="qr-merchant" style="color:var(--muted);font-size:13px;margin-top:6px"></p>
-      <canvas id="qr-canvas" width="200" height="200"></canvas>
+      <div id="qr-wrap"></div>
+      <p class="qr-brand">◉ Ae! Gušti Pay</p>
       <p class="qr-expiry" id="qr-expiry">Expires in 4:59</p>
       <button type="button" class="btn btn-outline" style="margin-top:16px" onclick="App.closeQR()">Close</button>
     </div>
   </div>
 
+  <script src="https://unpkg.com/qr-code-styling@1.9.2/lib/qr-code-styling.js"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
   <script>
   function playDing() {
     try {
@@ -676,149 +1496,1145 @@
     } catch (e) {}
   }
 
-  function generateFakeQR(canvas) {
-    const ctx = canvas.getContext('2d'), s = 29, c = canvas.width / s;
-    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-    [[0,0],[0,s-7],[s-7,0]].forEach(([r, col]) => {
-      ctx.fillStyle = '#000';
-      ctx.fillRect(col * c, r * c, 7 * c, 7 * c);
-      ctx.fillStyle = '#fff';
-      ctx.fillRect((col + 1) * c, (r + 1) * c, 5 * c, 5 * c);
-      ctx.fillStyle = '#000';
-      ctx.fillRect((col + 2) * c, (r + 2) * c, 3 * c, 3 * c);
-    });
-    for (let r = 0; r < s; r++) for (let col = 0; col < s; col++)
-      if (Math.random() > 0.5) { ctx.fillStyle = '#000'; ctx.fillRect(col * c, r * c, c, c); }
+  let aeQrStyle = null;
+  function renderAeQR(merchant, points) {
+    const wrap = document.getElementById('qr-wrap');
+    if (!wrap || typeof QRCodeStyling === 'undefined') return;
+    const payload = 'ae://pay?m=' + encodeURIComponent(merchant) + '&pts=' + (points || 0) + '&t=' + Date.now();
+    wrap.innerHTML = '';
+    if (!aeQrStyle) {
+      aeQrStyle = new QRCodeStyling({
+        width: 220, height: 220, type: 'canvas', data: payload, margin: 4,
+        qrOptions: { errorCorrectionLevel: 'H' },
+        dotsOptions: { color: '#00D4AA', type: 'rounded' },
+        backgroundOptions: { color: '#0d0d14' },
+        cornersSquareOptions: { type: 'extra-rounded', color: '#00D4AA' },
+        cornersDotOptions: { type: 'dot', color: '#F0F0F0' }
+      });
+    } else aeQrStyle.update({ data: payload });
+    aeQrStyle.append(wrap);
   }
 
-  const PARKING = [
-    [43.5128, 16.4821], [43.5135, 16.4831], [43.5140, 16.4818],
-    [43.5125, 16.4840], [43.5142, 16.4845], [43.5118, 16.4825], [43.5131, 16.4855]
-  ];
-  const FREE = 2;
-  const CENTER = [43.5133, 16.4827];
-  const SEEKER = [43.5152, 16.4812];
+  const SPLIT_CENTER = [43.5105, 16.455];
+  const USER_CENTAR = [43.5088, 16.4415];
+  const USER_PARKED = [43.5089, 16.4412];
+  const TECH_PARK = [43.52553, 16.49757];
+  const POLJUD = [43.518611, 16.469722];
+
+  function haversineM(a, b) {
+    const R = 6371000, rad = x => x * Math.PI / 180;
+    const dLat = rad(b[0]-a[0]), dLng = rad(b[1]-a[1]);
+    const h = Math.sin(dLat/2)**2 + Math.cos(rad(a[0]))*Math.cos(rad(b[0]))*Math.sin(dLng/2)**2;
+    return 2 * R * Math.asin(Math.sqrt(h));
+  }
+
+  function makeRng(seed) {
+    let s = seed >>> 0;
+    return () => {
+      s = (s + 0x6D2B79F5) | 0;
+      let t = Math.imul(s ^ (s >>> 15), 1 | s);
+      t ^= t + Math.imul(t ^ (t >>> 7), 61 | t);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function buildDemoSpots() {
+    const zones = [
+      { lat: 43.5088, lng: 16.4415, spread: 0.0042, streets: ['Marmontova', 'Narodni trg', 'Dioklecijanova', 'Obala', 'Kraj Sv. Duje'], perZone: 16 },
+      { lat: 43.5140, lng: 16.4820, spread: 0.0035, streets: ['Domovinskog rata', 'Matice Hrvatske', 'Šoltanska ul.'] },
+      { lat: 43.5185, lng: 16.4695, spread: 0.0032, streets: ['Vukovarska', 'Ulica Firula', 'Šetalište Firula'] },
+      { lat: 43.5055, lng: 16.4425, spread: 0.0030, streets: ['Riva', 'Voćarska', 'Slovenska ul.'] },
+      { lat: 43.5020, lng: 16.4480, spread: 0.0028, streets: ['Hrvatske mornarice', 'Zagrebačka'] },
+      { lat: 43.5125, lng: 16.4725, spread: 0.0032, streets: ['Put Cetina', 'Trstenjačka'] },
+      { lat: 43.5070, lng: 16.4520, spread: 0.0026, streets: ['Ulica kneza Mislava', 'Bolska cesta'] },
+      { lat: 43.5205, lng: 16.4965, spread: 0.0028, streets: ['Dračevac', 'Ulica kneza Branimira'] }
+    ];
+    const rand = makeRng(20260516);
+    const spots = [];
+    const placed = [];
+    const minSep2 = 0.00032 * 0.00032;
+    const defaultPerZone = 10;
+
+    zones.forEach(zone => {
+      const perZone = zone.perZone || defaultPerZone;
+      let placedHere = 0;
+      let attempts = 0;
+      while (placedHere < perZone && attempts < perZone * 40) {
+        attempts++;
+        const angle = rand() * Math.PI * 2;
+        const r = Math.pow(rand(), 0.55) * zone.spread;
+        const lat = zone.lat + Math.sin(angle) * r + (rand() - 0.5) * 0.00035;
+        const lng = zone.lng + Math.cos(angle) * r * 1.12 + (rand() - 0.5) * 0.0003;
+        let ok = true;
+        for (let p = 0; p < placed.length; p++) {
+          const dlat = lat - placed[p][0];
+          const dlng = lng - placed[p][1];
+          if (dlat * dlat + dlng * dlng < minSep2) { ok = false; break; }
+        }
+        if (!ok) continue;
+        placed.push([lat, lng]);
+        placedHere++;
+        const street = zone.streets[Math.floor(rand() * zone.streets.length)];
+        const nearCentar = haversineM([lat, lng], USER_CENTAR) < 520;
+        const available = nearCentar ? rand() < 0.18 : rand() < 0.065;
+        const mins = 10 + Math.floor(rand() * 165);
+        spots.push({
+          lat: Math.round(lat * 1e6) / 1e6,
+          lng: Math.round(lng * 1e6) / 1e6,
+          street,
+          num: String(2 + Math.floor(rand() * 86)),
+          available,
+          detail: available ? 'Available · 0 claims' : ('Parked ~' + mins + 'min')
+        });
+      }
+    });
+
+    spots.push({
+      lat: USER_PARKED[0],
+      lng: USER_PARKED[1],
+      street: 'Marmontova',
+      num: '12',
+      available: false,
+      detail: 'Your spot · Centar'
+    });
+    [
+      { lat: 43.5091, lng: 16.4409, street: 'Marmontova', num: '8', primaryFree: true },
+      { lat: 43.5083, lng: 16.4426, street: 'Narodni trg', num: '5' },
+      { lat: 43.5096, lng: 16.4395, street: 'Dioklecijanova', num: '11' },
+      { lat: 43.5079, lng: 16.4418, street: 'Obala', num: '3' }
+    ].forEach(s => spots.push({
+      lat: s.lat, lng: s.lng, street: s.street, num: s.num,
+      available: true, detail: 'Available · 0 claims', seedCentar: true, primaryFree: !!s.primaryFree
+    }));
+    spots.push({
+      lat: 43.5140,
+      lng: 16.4818,
+      street: 'Matice Hrvatske',
+      num: '14',
+      available: true,
+      detail: 'Available · Spinut'
+    });
+    return spots;
+  }
+
+  const SPOTS = buildDemoSpots();
+  const USER_SPOT = { street: 'Marmontova', num: '12', label: 'Centar, Split' };
+
+  function loadCommunitySpots() {
+    try {
+      const raw = localStorage.getItem('ae_community_spots');
+      if (!raw) return;
+      JSON.parse(raw).forEach(s => {
+        if (haversineM([s.lat, s.lng], SPLIT_CENTER) > 6500) return;
+        SPOTS.push({
+          lat: s.lat, lng: s.lng, street: s.street || 'Community spot', num: s.num || '—',
+          available: s.available !== false, detail: s.detail || 'Added by neighbor',
+          community: true, id: s.id || ('c-' + s.lat)
+        });
+      });
+    } catch (e) {}
+  }
+  function saveCommunitySpots() {
+    try {
+      localStorage.setItem('ae_community_spots', JSON.stringify(
+        SPOTS.filter(s => s.community).map(s => ({
+          id: s.id, lat: s.lat, lng: s.lng, street: s.street, num: s.num,
+          available: s.available, detail: s.detail
+        }))
+      ));
+    } catch (e) {}
+  }
+  loadCommunitySpots();
+  const getFreeIdx = (near) => {
+    const ok = (s) => s.available && !s.reported;
+    let i = SPOTS.findIndex(s => s.primaryFree && ok(s));
+    if (i >= 0) return i;
+    if (near) {
+      const ref = near === true ? USER_CENTAR : near;
+      const ranked = SPOTS.map((s, idx) => ({ s, idx })).filter(x => ok(x.s));
+      if (!ranked.length) return -1;
+      ranked.sort((a, b) =>
+        haversineM(ref, [a.s.lat, a.s.lng]) - haversineM(ref, [b.s.lat, b.s.lng])
+      );
+      return ranked[0].idx;
+    }
+    i = SPOTS.findIndex(s => s.seedCentar && ok(s));
+    if (i >= 0) return i;
+    return SPOTS.findIndex(s => ok(s));
+  };
+  const CENTER = SPLIT_CENTER.slice();
+  const USER_DEFAULT = USER_CENTAR.slice();
+  const USER_DEFAULT_LABEL = 'Centar · Narodni trg';
+  const SEEKER = USER_DEFAULT;
   const TILE = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+  const coords = i => [SPOTS[i].lat, SPOTS[i].lng];
+  const allCoords = () => SPOTS.map(s => [s.lat, s.lng]);
+
+  const CROWD_EVENTS = [
+    {
+      id: 'riva-concert', lat: 43.5082, lng: 16.4408, emoji: '🎵', radius: 200,
+      title: 'Riva live concert',
+      cause: 'Outdoor concert',
+      detail: 'Waterfront closed to cars · Centar packed',
+      level: 'high', endsInMin: 42
+    },
+    {
+      id: 'hajduk', lat: POLJUD[0], lng: POLJUD[1], emoji: '⚽', radius: 380,
+      title: 'HNK Hajduk — Poljud',
+      cause: 'Football match',
+      detail: 'Poljud Stadium · kickoff 20:30 · match-day traffic on Firule & Spinut',
+      level: 'high', endsInMin: 88
+    },
+    {
+      id: 'pazar', lat: 43.5108, lng: 16.4388, emoji: '🧺', radius: 140,
+      title: 'Green market rush',
+      cause: 'Saturday market peak',
+      detail: 'Pazar · delivery trucks on narrow streets',
+      level: 'med', endsInMin: 28
+    }
+  ];
+
+  const ACHIEVEMENTS = [
+    { id: 'first_share', icon: '🚗', title: 'First Misto', desc: 'Share your first spot', bonus: 5,
+      test: s => s.shares >= 1 },
+    { id: 'sharer_5', icon: '🌟', title: 'Street Legend', desc: 'Share 5 Misto', bonus: 10,
+      test: s => s.shares >= 5 },
+    { id: 'sharer_10', icon: '👑', title: 'Kvart Hero', desc: 'Share 10 Misto', bonus: 20,
+      test: s => s.shares >= 10 },
+    { id: 'first_claim', icon: '🔍', title: 'Spot Hunter', desc: 'Reserve a Misto', bonus: 5,
+      test: s => s.claims >= 1 },
+    { id: 'parked', icon: '🅿️', title: 'Parked!', desc: 'Complete a navigation', bonus: 8,
+      test: s => s.parked >= 1 },
+    { id: 'first_report', icon: '🚶', title: 'Digitalni Redar', desc: 'Report wrong info', bonus: 5,
+      test: s => s.reports >= 1 },
+    { id: 'redar_3', icon: '🛡️', title: 'Neighborhood Watch', desc: '3 reports filed', bonus: 12,
+      test: s => s.reports >= 3 },
+    { id: 'community', icon: '➕', title: 'Map Builder', desc: 'Add a community Misto', bonus: 8,
+      test: s => s.community >= 1 },
+    { id: 'crowd_scout', icon: '🎪', title: 'Crowd Scout', desc: 'Check a live crowd event', bonus: 5,
+      test: s => s.crowds >= 1 },
+    { id: 'gustin_60', icon: '💰', title: 'Gušti Stack', desc: 'Reach 60 Gušti', bonus: 0,
+      test: (s, pts) => pts >= 60 },
+    { id: 'redeem', icon: '☕', title: 'Local Supporter', desc: 'Redeem a partner reward', bonus: 5,
+      test: s => s.redeems >= 1 },
+    { id: 'demo_grad', icon: '🎬', title: 'Tour Complete', desc: 'Finish the guided demo', bonus: 15,
+      test: s => s.demoDone >= 1 }
+  ];
+
+  const USER_HOOD = 'Centar';
+  const CO2_HOODS = [
+    { hood: 'Spinut', members: 214, week: 12.4, all: 48.2 },
+    { hood: 'Centar', members: 388, week: 10.8, all: 41.6, you: true },
+    { hood: 'Firule', members: 176, week: 9.6, all: 36.9 },
+    { hood: 'Trstenik', members: 142, week: 8.2, all: 31.4 },
+    { hood: 'Varoš', members: 165, week: 7.1, all: 28.1 },
+    { hood: 'Kman', members: 98, week: 0, all: 0 },
+    { hood: 'Bol', members: 89, week: 5.4, all: 18.7 },
+    { hood: 'Meje', members: 72, week: 4.8, all: 15.3 }
+  ];
+
+  const delay = ms => new Promise(r => setTimeout(r, ms));
 
   const App = {
     screen: 0,
     points: 47,
     maps: {},
+    mapLayers: {},
+    navOverlay: null,
+    navPaused: false,
     navTimer: null,
     navDemoTimer: null,
     seekerAnim: null,
     qrTimer: null,
     shareTimer: null,
+    demoActive: false,
+    demoAborted: false,
+    demoTimers: [],
+    demoHighlightIdx: null,
+    demoHighlightMapId: null,
+    claimedSpotIdx: null,
+    userLocation: null,
+    userLocLayer: null,
+    nearbyIndices: null,
+    addSpotMode: false,
+    pendingAddSpot: null,
+    addSpotAvail: true,
+    loggedIn: true,
+    user: { name: 'Luka Kovač', email: 'luka.kovac@email.hr', initials: 'LK' },
+    profileReturn: null,
+    crowdLayer: null,
+    crowdMarkers: [],
+    crowdTicker: null,
+    spotCluster: null,
+    stats: null,
+    unlockedAchievements: {},
+    achBonusEarned: 0,
+    achToastTimer: null,
+    co2Period: 'week',
 
     go(n) {
+      if (this.demoActive && n === 0) return;
       this.screen = n;
       document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
       document.getElementById('screen-' + n).classList.add('active');
       document.querySelectorAll('.nav-item').forEach(b => {
         b.classList.toggle('active', parseInt(b.dataset.nav, 10) === n);
       });
-      document.getElementById('bottom-nav').style.display = n === 0 ? 'none' : 'flex';
+      document.getElementById('bottom-nav').style.display = (n === 0 || n === 6) ? 'none' : 'flex';
 
       if (n === 1) {
-        this.destroyMap('map-1');
-        this.initMap('map-1', { pins: true, popup: true });
+        this.setDefaultUserLocation();
+        this.ensureMap('map-1', { mode: 'home' });
+        setTimeout(() => this.focusMapOnUser(false), 180);
+        this.updateHomeSheet();
+        this.startCrowdTicker();
+        this.renderCrowds('map-1');
       }
       if (n === 2) {
         this.resetShare();
-        this.destroyMap('map-2');
-        this.initMap('map-2', { highlight: true });
+        this.ensureMap('map-2', { mode: 'highlight' });
       }
-      if (n === 3) {
-        this.destroyMap('map-3');
-        this.initMap('map-3', { pins: true, route: true, hardGreen: true });
+      if (n === 3) { this.syncFindLabels(); this.ensureMap('map-3', { mode: 'find' }); }
+      if (n === 4) {
+        if (this.claimedSpotIdx == null) this.claimedSpotIdx = getFreeIdx(true);
+        this.syncFindLabels();
+        this.bumpStat('claims', 1);
+        this.startNav();
       }
-      if (n === 4) this.startNav();
-      if (n === 5) this.updatePoints();
+      if (n === 5) { this.updatePoints(); this.renderAchievements(); this.updateCo2WalletStrip(); }
+      if (n === 6) this.renderProfile();
+      if (n === 7) this.renderImpact();
     },
 
-    updatePoints() {
-      document.getElementById('pts-top').textContent = this.points + ' pts';
-      document.getElementById('wallet-bal').textContent = this.points;
+
+    computeUserCo2Kg() {
+      if (!this.stats) this.loadAchievements();
+      const s = this.stats;
+      const kg = (s.co2Kg || 0) + s.shares * 0.38 + s.parked * 0.42 + s.claims * 0.22;
+      return Math.round(kg * 10) / 10;
     },
 
-    lockMap(map) {
-      map.dragging.disable();
-      map.touchZoom.disable();
-      map.doubleClickZoom.disable();
-      map.scrollWheelZoom.disable();
-      map.boxZoom.disable();
-      map.keyboard.disable();
-      if (map.tap) map.tap.disable();
+    addCo2(kg) {
+      if (!this.stats) this.loadAchievements();
+      this.stats.co2Kg = Math.round(((this.stats.co2Kg || 0) + kg) * 100) / 100;
+      this.saveAchievements();
+      this.updateCo2WalletStrip();
+      if (this.screen === 7) this.renderImpact();
     },
 
-    pinIcon(green, hard) {
-      return L.divIcon({
-        className: 'pin-wrap',
-        html: '<div class="' + (green ? 'pin-green' + (hard ? ' hard' : '') : 'pin-red') + '"></div>',
-        iconSize: green ? [18, 18] : [14, 14],
-        iconAnchor: green ? [9, 9] : [7, 7]
+    getLeaderboard(period) {
+      const userKg = this.computeUserCo2Kg();
+      const hoodBase = period === 'week' ? 2.8 : 14.2;
+      return CO2_HOODS.map(h => {
+        let kg = period === 'week' ? h.week : h.all;
+        if (h.you) kg = hoodBase + userKg;
+        return { hood: h.hood, members: h.members, kg: Math.round(kg * 10) / 10, you: !!h.you };
+      }).sort((a, b) => b.kg - a.kg);
+    },
+
+    setCo2Period(period) {
+      this.co2Period = period;
+      document.getElementById('co2-tab-week')?.classList.toggle('active', period === 'week');
+      document.getElementById('co2-tab-all')?.classList.toggle('active', period === 'all');
+      this.renderImpact();
+    },
+
+    updateCo2WalletStrip() {
+      const kg = this.computeUserCo2Kg();
+      const title = document.getElementById('co2-wallet-title');
+      const sub = document.getElementById('co2-wallet-sub');
+      if (title) title.textContent = kg + ' kg CO₂ saved';
+      if (sub) {
+        const board = this.getLeaderboard('week');
+        const rank = board.findIndex(r => r.you) + 1;
+        sub.textContent = rank > 0
+          ? ('#' + rank + ' in ' + USER_HOOD + ' this week · tap leaderboard')
+          : 'Neighborhood leaderboard · tap to view';
+      }
+    },
+
+    renderImpact() {
+      if (!this.stats) this.loadAchievements();
+      const kg = this.computeUserCo2Kg();
+      const set = (id, t) => { const n = document.getElementById(id); if (n) n.textContent = t; };
+      set('co2-total', String(kg));
+      set('co2-hero-sub', 'Less circling in Split · your kvart: ' + USER_HOOD);
+      set('co2-eq-km', String(Math.round(kg * 4.2)));
+      set('co2-eq-min', String(Math.round(kg * 35)));
+      set('co2-eq-trees', String(Math.max(1, Math.round(kg / 6))));
+      const board = this.getLeaderboard(this.co2Period || 'week');
+      const list = document.getElementById('demo-target-co2-board');
+      if (list) {
+        list.innerHTML = board.map((row, i) => {
+          const rank = i + 1;
+          const youTag = row.you ? ' · you' : '';
+          return '<div class="lb-row' + (row.you ? ' you' : '') + '">' +
+            '<span class="lb-rank">' + rank + '</span>' +
+            '<div class="lb-hood"><b>' + row.hood + youTag + '</b><span>' + row.members + ' neighbors active</span></div>' +
+            '<span class="lb-kg">' + row.kg + ' kg<small>CO₂ avoided</small></span>' +
+            '</div>';
+        }).join('');
+      }
+      const youRow = board.find(r => r.you);
+      const rank = board.findIndex(r => r.you) + 1;
+      set('co2-footnote', rank > 0
+        ? ('You rank #' + rank + ' in ' + USER_HOOD + ' for ' + (this.co2Period === 'week' ? 'this week' : 'all time') +
+          ' · ' + (youRow ? youRow.kg : kg) + ' kg from smarter parking.')
+        : 'Rankings combine shared Misto, faster parking, and fewer circling trips.');
+      this.updateCo2WalletStrip();
+    },
+
+    async animateCo2Count(from, to, ms) {
+      const el = document.getElementById('co2-total');
+      if (!el) return;
+      ms = ms || 1400;
+      const t0 = performance.now();
+      await new Promise(resolve => {
+        const tick = now => {
+          const p = Math.min(1, (now - t0) / ms);
+          const v = from + (to - from) * (1 - Math.pow(1 - p, 2));
+          el.textContent = String(Math.round(v * 10) / 10);
+          if (p < 1) requestAnimationFrame(tick);
+          else { el.textContent = String(Math.round(to * 10) / 10); resolve(); }
+        };
+        requestAnimationFrame(tick);
       });
     },
 
-    addPins(map, greenIdx, interactive, hard) {
-      PARKING.forEach((coords, i) => {
-        const isFree = i === greenIdx;
-        const m = L.marker(coords, {
-          icon: this.pinIcon(isFree, hard && isFree),
-          interactive: !!interactive && isFree
-        }).addTo(map);
-        if (interactive && isFree) {
-          m.bindPopup(
-            '<strong>✅ Matice Hrvatske 14</strong><br><span style="color:#6B7280;font-size:12px">Just opened · 0 claims</span>' +
-            '<button class="popup-btn" onclick="App.go(3)">Claim this Misto →</button>'
-          );
+    loadAchievements() {
+      const defaultStats = { shares: 11, claims: 4, reports: 3, community: 0, parked: 2, redeems: 0, crowds: 0, demoDone: 0, co2Kg: 4.6 };
+      try {
+        const rawS = localStorage.getItem('ae_stats');
+        this.stats = rawS ? Object.assign({}, defaultStats, JSON.parse(rawS)) : Object.assign({}, defaultStats);
+        const rawA = localStorage.getItem('ae_achievements');
+        this.unlockedAchievements = rawA ? JSON.parse(rawA) : {};
+        this.achBonusEarned = parseInt(localStorage.getItem('ae_ach_bonus') || '0', 10) || 0;
+      } catch (e) {
+        this.stats = Object.assign({}, defaultStats);
+        this.unlockedAchievements = {};
+        this.achBonusEarned = 0;
+      }
+      ACHIEVEMENTS.forEach(a => {
+        if (a.test(this.stats, this.points) && !this.unlockedAchievements[a.id]) {
+          this.unlockedAchievements[a.id] = Date.now();
+        }
+      });
+      this.saveAchievements();
+    },
+
+    saveAchievements() {
+      try {
+        localStorage.setItem('ae_stats', JSON.stringify(this.stats));
+        localStorage.setItem('ae_achievements', JSON.stringify(this.unlockedAchievements));
+        localStorage.setItem('ae_ach_bonus', String(this.achBonusEarned || 0));
+      } catch (e) {}
+    },
+
+    bumpStat(key, n) {
+      if (!this.stats) this.loadAchievements();
+      this.stats[key] = (this.stats[key] || 0) + (n || 1);
+      this.saveAchievements();
+      this.checkAchievements();
+      this.renderAchievements();
+      if (key === 'shares' || key === 'parked' || key === 'claims' || key === 'co2Kg') {
+        this.updateCo2WalletStrip();
+        if (this.screen === 7) this.renderImpact();
+      }
+    },
+
+    checkAchievements() {
+      if (!this.stats) return;
+      ACHIEVEMENTS.forEach(a => {
+        if (!this.unlockedAchievements[a.id] && a.test(this.stats, this.points)) {
+          this.unlockAchievement(a);
         }
       });
     },
 
-    initMap(id, opts = {}) {
+    unlockAchievement(a) {
+      if (this.unlockedAchievements[a.id]) return;
+      this.unlockedAchievements[a.id] = Date.now();
+      if (a.bonus > 0) {
+        this.points += a.bonus;
+        this.achBonusEarned = (this.achBonusEarned || 0) + a.bonus;
+        this.updatePoints();
+      }
+      this.saveAchievements();
+      this.renderAchievements();
+      this.showAchievementToast(a);
+      playDing();
+    },
+
+    showAchievementToast(a) {
+      const toast = document.getElementById('achievement-toast');
+      if (!toast) return;
+      document.getElementById('ach-toast-icon').textContent = a.icon;
+      document.getElementById('ach-toast-title').textContent = a.title;
+      document.getElementById('ach-toast-desc').textContent = a.desc;
+      const ptsEl = document.getElementById('ach-toast-pts');
+      ptsEl.textContent = a.bonus > 0 ? ('+' + a.bonus + ' bonus Gušti') : 'Badge unlocked';
+      toast.classList.add('show');
+      if (this.achToastTimer) clearTimeout(this.achToastTimer);
+      this.achToastTimer = setTimeout(() => toast.classList.remove('show'), 3200);
+    },
+
+    renderAchievements() {
+      if (!this.stats) this.loadAchievements();
+      const grid = document.getElementById('achievements-grid');
+      const total = ACHIEVEMENTS.length;
+      const unlocked = ACHIEVEMENTS.filter(a => this.unlockedAchievements[a.id]).length;
+      const badge = document.getElementById('ach-count-badge');
+      if (badge) badge.textContent = unlocked + '/' + total;
+      const wTitle = document.getElementById('ach-wallet-title');
+      const wSub = document.getElementById('ach-wallet-sub');
+      if (wTitle) wTitle.textContent = unlocked + ' of ' + total + ' unlocked';
+      if (wSub) {
+        const bonus = this.achBonusEarned || 0;
+        wSub.textContent = bonus > 0
+          ? ('+' + bonus + ' bonus Gušti from badges · tap to view')
+          : 'Unlock badges · earn bonus Gušti';
+      }
+      const sh = document.getElementById('profile-stat-shares');
+      const rep = document.getElementById('profile-stat-reports');
+      const pts = document.getElementById('profile-stat-pts');
+      if (sh) sh.textContent = this.stats.shares;
+      if (rep) rep.textContent = this.stats.reports;
+      if (pts) pts.textContent = this.points;
+      if (!grid) return;
+      grid.innerHTML = ACHIEVEMENTS.map(a => {
+        const on = !!this.unlockedAchievements[a.id];
+        return '<div class="achievement-card ' + (on ? 'unlocked' : 'locked') + '" title="' + a.desc + '">' +
+          '<span class="ach-ico">' + a.icon + '</span>' +
+          '<span class="ach-name">' + a.title + '</span>' +
+          (a.bonus > 0 ? '<span class="ach-pts">+' + a.bonus + '</span>' : '<span class="ach-pts">Badge</span>') +
+          '</div>';
+      }).join('');
+    },
+
+    updatePoints() {
+      document.getElementById('pts-top').textContent = this.points + ' Gušti';
+      document.getElementById('wallet-bal').textContent = this.points;
+      if (this.stats) this.checkAchievements();
+      const pts = document.getElementById('profile-stat-pts');
+      if (pts) pts.textContent = this.points;
+    },
+
+
+
+    activeCrowds() {
+      return CROWD_EVENTS.filter(c => c.endsInMin > 0);
+    },
+
+    crowdPopupHtml(ev) {
+      const levelLabel = ev.level === 'high' ? 'Heavy crowd' : (ev.level === 'med' ? 'Busy area' : 'Light crowd');
+      const park = ev.level === 'high'
+        ? 'Parking impact: high — avoid driving through'
+        : 'Parking impact: moderate nearby';
+      return '<span class="crowd-live-tag">◉ LIVE · ' + levelLabel + '</span>' +
+        '<strong>' + ev.emoji + ' ' + ev.title + '</strong><br>' +
+        '<span style="color:#a78bfa;font-size:12px;font-weight:600">' + ev.cause + '</span><br>' +
+        '<span style="color:#6B7280;font-size:12px">' + ev.detail + '</span><br>' +
+        '<span style="color:#6B7280;font-size:11px;display:block;margin-top:8px">' + park + '</span>' +
+        '<span style="color:#c4b5fd;font-size:11px;font-weight:700">Ends in ~' + ev.endsInMin + ' min</span>';
+    },
+
+    crowdIcon(ev) {
+      return L.divIcon({
+        className: 'crowd-wrap',
+        html: '<div class="crowd-pin">' + ev.emoji + '</div>',
+        iconSize: [28, 28], iconAnchor: [14, 14]
+      });
+    },
+
+    renderCrowds(mapId) {
+      if (mapId !== 'map-1') return;
+      const map = this.maps[mapId];
+      if (!map) return;
+      if (!this.crowdLayer) this.crowdLayer = L.layerGroup().addTo(map);
+      else if (!map.hasLayer(this.crowdLayer)) this.crowdLayer.addTo(map);
+      this.crowdLayer.clearLayers();
+      this.crowdMarkers = [];
+      const zoom = map.getZoom();
+      const showOnMap = zoom >= 16;
+      const active = this.activeCrowds();
+      active.forEach(ev => {
+        if (showOnMap) {
+          const fill = ev.level === 'high' ? 0.1 : (ev.level === 'med' ? 0.06 : 0.04);
+          const color = ev.level === 'high' ? '#a855f7' : '#7c3aed';
+          L.circle([ev.lat, ev.lng], {
+            radius: ev.radius * 0.65, color: color, fillColor: color,
+            fillOpacity: fill, weight: 1, dashArray: '6,8'
+          }).addTo(this.crowdLayer);
+          const m = L.marker([ev.lat, ev.lng], { icon: this.crowdIcon(ev), zIndexOffset: 800 })
+            .bindPopup(this.crowdPopupHtml(ev))
+            .addTo(this.crowdLayer);
+          m.on('click', () => m.openPopup());
+          this.crowdMarkers.push(m);
+        }
+      });
+      if (!this._crowdZoomBound) {
+        this._crowdZoomBound = true;
+        map.on('zoomend', () => { if (this.screen === 1) this.renderCrowds(mapId); });
+      }
+      this.updateCrowdUI();
+    },
+
+    updateCrowdUI() {
+      const active = this.activeCrowds();
+      const n = active.length;
+      const banner = document.getElementById('crowd-banner-text');
+      if (banner) {
+        banner.textContent = n ? (n + ' live crowd' + (n > 1 ? 's' : '')) : 'No active crowds';
+      }
+      const head = document.getElementById('crowd-sheet-heading');
+      if (head) head.textContent = n ? ('Live crowds · ' + n + ' now') : 'Live crowds';
+      const list = document.getElementById('crowd-sheet-list');
+      if (!list) return;
+      if (!n) {
+        list.innerHTML = '<p style="font-size:12px;color:var(--muted);padding:8px 0">No major events reported right now.</p>';
+        return;
+      }
+      list.innerHTML = active.map(ev =>
+        '<div class="crowd-row" onclick="App.flyToCrowd(\'' + ev.id + '\')">' +
+        '<span class="cr-ico">' + ev.emoji + '</span><div>' +
+        '<b>' + ev.title + '</b>' +
+        '<span>' + ev.cause + ' — ' + ev.detail + '</span>' +
+        '<span class="cr-eta">~' + ev.endsInMin + ' min left</span></div></div>'
+      ).join('');
+    },
+
+    flyToCrowd(id) {
+      const ev = CROWD_EVENTS.find(c => c.id === id);
+      const map = this.maps['map-1'];
+      if (!ev || !map) return;
+      document.getElementById('map-sheet').classList.remove('collapsed');
+      this.bumpStat('crowds', 1);
+      map.flyTo([ev.lat, ev.lng], 16, { animate: true, duration: 0.9 });
+      setTimeout(() => {
+        const active = CROWD_EVENTS.filter(c => c.endsInMin > 0);
+        const i = active.findIndex(c => c.id === id);
+        if (i >= 0 && this.crowdMarkers[i]) this.crowdMarkers[i].openPopup();
+      }, 700);
+    },
+
+    startCrowdTicker() {
+      if (this.crowdTicker) return;
+      this.crowdTicker = setInterval(() => {
+        CROWD_EVENTS.forEach(c => {
+          if (c.endsInMin > 0 && Math.random() > 0.7) c.endsInMin = Math.max(0, c.endsInMin - 1);
+        });
+        if (this.screen === 1 && this.maps['map-1']) this.renderCrowds('map-1');
+      }, 45000);
+    },
+
+    getUserPos() { return this.userLocation || USER_DEFAULT; },
+
+    setDefaultUserLocation() {
+      this.userLocation = USER_DEFAULT.slice();
+      this.userLocationAcc = 55;
+      this.userLocationIsDefault = true;
+      this._userLocLabel = USER_DEFAULT_LABEL;
+      this.computeNearbyIndices();
+      if (this.maps['map-1']) {
+        this.updateUserOnMap('map-1');
+      }
+    },
+
+    setDemoUserLocation(lat, lng, opts) {
+      opts = opts || {};
+      this.userLocation = [lat, lng];
+      this.userLocationAcc = opts.acc || 45;
+      this.userLocationIsDefault = false;
+      this._userLocLabel = opts.label || 'You';
+      this.computeNearbyIndices(opts.radius || 500);
+      if (this.maps['map-1']) {
+        this.updateUserOnMap('map-1');
+      }
+    },
+
+    userLocPopupHtml() {
+      const sub = this.userLocationIsDefault
+        ? USER_DEFAULT_LABEL
+        : (this._userLocLabel || 'You');
+      return '<strong>You are here</strong><br><span style="color:#6B7280;font-size:12px">' + sub + '</span>';
+    },
+
+    getFreeSpotIdx() { return this.claimSpotIdx(); },
+
+    claimSpotIdx() {
+      const i = this.claimedSpotIdx;
+      if (i != null && SPOTS[i] && SPOTS[i].available && !SPOTS[i].reported) return i;
+      return getFreeIdx(true);
+    },
+
+    syncFindLabels() {
+      const i = this.claimSpotIdx();
+      if (i < 0) return;
+      const s = SPOTS[i];
+      const label = s.street + ' ' + s.num + ', Centar';
+      const sub = document.getElementById('find-banner-sub');
+      if (sub) sub.textContent = s.street + ' ' + s.num + ' · just now';
+      const nav = document.getElementById('nav-dest-label');
+      if (nav) nav.textContent = label;
+    },
+
+    claimSpot(idx) {
+      const i = idx != null ? idx : this.claimSpotIdx();
+      if (i < 0 || !SPOTS[i] || !SPOTS[i].available || SPOTS[i].reported) return;
+      this.claimedSpotIdx = i;
+      this.syncFindLabels();
+      this.go(4);
+    },
+
+    releaseSharedParkedSpot() {
+      const i = SPOTS.findIndex(s =>
+        Math.abs(s.lat - USER_PARKED[0]) < 0.00008 && Math.abs(s.lng - USER_PARKED[1]) < 0.00008
+      );
+      if (i < 0) return;
+      SPOTS[i].available = true;
+      SPOTS[i].detail = 'Just shared · leaving now';
+      SPOTS[i].freesInMin = null;
+    },
+
+    promoteAnotherAvailable(nearLat, nearLng, excludeIdx) {
+      const hasFree = SPOTS.some((s, i) => s.available && !s.reported && i !== excludeIdx);
+      if (hasFree) return;
+      const ref = nearLat != null ? [nearLat, nearLng] : this.getUserPos();
+      const candidates = SPOTS.map((s, i) => ({ s, i })).filter(x =>
+        !x.s.available && !x.s.reported && !x.s.community && x.i !== excludeIdx
+      );
+      if (!candidates.length) return;
+      candidates.sort((a, b) =>
+        haversineM(ref, [a.s.lat, a.s.lng]) - haversineM(ref, [b.s.lat, b.s.lng])
+      );
+      const pick = candidates[0];
+      pick.s.available = true;
+      pick.s.freesInMin = null;
+      pick.s.detail = 'Just opened · neighbor update';
+      this.updateHomeSheet();
+    },
+
+
+    computeNearbyIndices(radiusM) {
+      radiusM = radiusM || 650;
+      if (!this.userLocation) { this.nearbyIndices = new Set(); return; }
+      const set = new Set();
+      SPOTS.forEach((sp, i) => {
+        if (!sp.reported && haversineM(this.userLocation, [sp.lat, sp.lng]) <= radiusM) set.add(i);
+      });
+      this.nearbyIndices = set;
+    },
+
+    ensureUserPane(map) {
+      if (!map.getPane('userPane')) {
+        const pane = map.createPane('userPane');
+        pane.style.zIndex = 700;
+      }
+    },
+
+    updateUserOnMap(mapId) {
+      if (mapId !== 'map-1' || !this.userLocation) return;
+      const map = this.maps[mapId];
+      if (!map) return;
+      this.ensureUserPane(map);
+      if (!this.userLocLayer) {
+        this.userLocLayer = L.layerGroup({ pane: 'userPane' }).addTo(map);
+      } else if (!map.hasLayer(this.userLocLayer)) {
+        this.userLocLayer.addTo(map);
+      }
+      this.userLocLayer.clearLayers();
+      const acc = this.userLocationAcc || 45;
+      L.circle(this.userLocation, {
+        radius: acc,
+        color: '#3B82F6',
+        fillColor: '#3B82F6',
+        fillOpacity: 0.14,
+        weight: 2,
+        dashArray: '5,7',
+        pane: 'userPane'
+      }).addTo(this.userLocLayer);
+      this.userMarker = L.marker(this.userLocation, {
+        icon: this.userLocIcon(),
+        zIndexOffset: 2000,
+        pane: 'userPane'
+      }).bindPopup(this.userLocPopupHtml())
+        .addTo(this.userLocLayer);
+    },
+
+    userLocIcon() {
+      return L.divIcon({
+        className: 'user-loc-wrap',
+        html: '<div class="user-loc-pin"><div class="user-loc-ring"><div class="user-loc-dot"></div></div><span class="user-loc-label">You</span></div>',
+        iconSize: [56, 52],
+        iconAnchor: [28, 30]
+      });
+    },
+
+    focusMapOnUser(animate, opts) {
+      opts = opts || {};
+      const map = this.maps['map-1'];
+      if (!map) return;
+      if (!opts.keepLocation) this.setDefaultUserLocation();
+      this.updateUserOnMap('map-1');
+      map.setView(this.getUserPos(), opts.zoom || 17, { animate: animate !== false });
+      if (opts.openPopup) {
+        setTimeout(() => { if (this.userMarker) this.userMarker.openPopup(); }, animate === false ? 80 : 450);
+      }
+    },
+
+    centerOnUser(animate) {
+      this.focusMapOnUser(animate, { openPopup: true });
+    },
+
+    toggleAddSpotMode() {
+      this.addSpotMode = !this.addSpotMode;
+      document.getElementById('btn-add-spot')?.classList.toggle('active', this.addSpotMode);
+      document.getElementById('map-add-hint')?.classList.toggle('show', this.addSpotMode);
+      const c = this.maps['map-1']?.getContainer();
+      if (c) c.style.cursor = this.addSpotMode ? 'crosshair' : '';
+    },
+
+    openAddSpotModal(lat, lng) {
+      this.pendingAddSpot = { lat, lng };
+      const hint = document.getElementById('add-spot-location-hint');
+      if (hint) hint.textContent = 'In Split · ' + lat.toFixed(5) + ', ' + lng.toFixed(5);
+      document.getElementById('add-spot-street').value = '';
+      document.getElementById('add-spot-num').value = '';
+      this.setAddSpotAvail(true);
+      document.getElementById('add-spot-modal').classList.add('show');
+    },
+
+    closeAddSpotModal() {
+      document.getElementById('add-spot-modal').classList.remove('show');
+      this.pendingAddSpot = null;
+      if (this.addSpotMode) this.toggleAddSpotMode();
+    },
+
+    setAddSpotAvail(free) {
+      this.addSpotAvail = free;
+      document.getElementById('add-pick-free').className = free ? 'selected-free' : '';
+      document.getElementById('add-pick-busy').className = free ? '' : 'selected-busy';
+    },
+
+    submitAddSpot() {
+      const p = this.pendingAddSpot;
+      if (!p) return;
+      const street = document.getElementById('add-spot-street').value.trim() || 'Community spot';
+      const num = document.getElementById('add-spot-num').value.trim() || '—';
+      const avail = this.addSpotAvail;
+      SPOTS.push({
+        id: 'c-' + Date.now(), lat: p.lat, lng: p.lng, street, num,
+        available: avail, detail: 'Added by you · community', community: true
+      });
+      saveCommunitySpots();
+      this.computeNearbyIndices();
+      this.points += 3;
+      this.updatePoints();
+      this.closeAddSpotModal();
+      this.refreshMapPins('map-1');
+      this.updateUserOnMap('map-1');
+      this.updateHomeSheet();
+    },
+
+    addCommunitySpot(lat, lng) {
+      this.openAddSpotModal(lat, lng);
+    },
+
+    reportSpot(idx, kind) {
+      const spot = SPOTS[idx];
+      if (!spot) return;
+      const wasAvailable = spot.available && !spot.reported;
+      if (spot.community) {
+        if (!confirm('Remove this community spot from the map?')) return;
+        const lat = spot.lat, lng = spot.lng;
+        SPOTS.splice(SPOTS.indexOf(spot), 1);
+        saveCommunitySpots();
+        if (wasAvailable) this.promoteAnotherAvailable(lat, lng, idx);
+      } else {
+        spot.reported = true;
+        spot.available = false;
+        spot.detail = 'Under review · reported';
+        if (wasAvailable) this.promoteAnotherAvailable(spot.lat, spot.lng, idx);
+      }
+      this.points += 5;
+      this.updatePoints();
+      this.bumpStat('reports', 1);
+      this.refreshMapPins('map-1');
+      this.updateHomeSheet();
+      this.bumpStat('community', 1);
+    },
+
+    popupReportHtml(i) {
+      return '<button class="popup-btn-outline" onclick="App.reportSpot(' + i + ',\'wrong\')">⚠️ Report wrong info</button>' +
+        '<button class="popup-btn-outline" onclick="App.reportSpot(' + i + ',\'ghost\')">🚫 No parking here</button>';
+    },
+
+    refreshMapPins(mapId) {
+      const map = this.maps[mapId];
+      if (!map) return;
+      if (mapId === 'map-1') {
+        this.addPinsToHomeMap(map, mapId);
+      } else {
+        const g = this.mapLayers[mapId];
+        if (!g) return;
+        g.clearLayers();
+        this.addPinsToGroup(g, mapId, true);
+      }
+      this.updateUserOnMap(mapId);
+      this.renderCrowds(mapId);
+    },
+
+    addPinsToHomeMap(map, mapId) {
+      if (this.spotCluster) {
+        try { map.removeLayer(this.spotCluster); } catch (e) {}
+        this.spotCluster = null;
+      }
+      let g = this.mapLayers[mapId];
+      if (!g || typeof g.clearLayers !== 'function') {
+        g = L.layerGroup().addTo(map);
+        this.mapLayers[mapId] = g;
+      } else {
+        g.clearLayers();
+        if (!map.hasLayer(g)) g.addTo(map);
+      }
+      this.addPinsToGroup(g, mapId, false);
+    },
+
+    addMapControls(map) {
+      L.control.zoom({ position: 'bottomright' }).addTo(map);
+    },
+
+    toggleSheet() {
+      const sheet = document.getElementById('map-sheet');
+      if (!sheet) return;
+      sheet.classList.toggle('collapsed');
+      const map = this.maps['map-1'];
+      if (map) setTimeout(() => map.invalidateSize(), 320);
+    },
+
+    flyToSpot(index) {
+      const map = this.maps['map-1'];
+      if (!map) return;
+      map.flyTo(coords(index), 18, { animate: true, duration: 0.8 });
+      const layer = this.markers && this.markers['map-1'] && this.markers['map-1'][index];
+      if (layer) setTimeout(() => layer.openPopup(), 600);
+    },
+
+    flyToArea(lat, lng) {
+      const map = this.maps['map-1'];
+      if (map) map.flyTo([lat, lng], 17, { animate: true, duration: 0.7 });
+    },
+
+    ensureMap(id, opts) {
       if (this.maps[id]) {
-        setTimeout(() => this.maps[id].invalidateSize(), 100);
+        setTimeout(() => {
+          this.maps[id].invalidateSize();
+          if (id === 'map-1') {
+            this.renderCrowds(id);
+            this.updateUserOnMap(id);
+            this.focusMapOnUser(false, { keepLocation: true });
+          }
+        }, 120);
         return this.maps[id];
       }
+      return this.initMap(id, opts);
+    },
+
+
+    clusterIcon(cluster) {
+      const count = cluster.getChildCount();
+      const markers = cluster.getAllChildMarkers();
+      const free = markers.filter(m => m.options.aeAvailable).length;
+      const hasFree = free > 0;
+      const size = count < 12 ? 42 : (count < 30 ? 50 : 58);
+      return L.divIcon({
+        html: '<div class="ae-cluster' + (hasFree ? ' has-free' : '') + '"><span class="ae-cluster-n">' + count + '</span></div>',
+        className: 'ae-cluster-wrap',
+        iconSize: [size, size],
+        iconAnchor: [size / 2, size / 2]
+      });
+    },
+
+    addPinsToCluster(map, mapId) {
+      if (this.spotCluster) {
+        try { map.removeLayer(this.spotCluster); } catch (e) {}
+        this.spotCluster.clearLayers();
+      }
+      this.spotCluster = L.markerClusterGroup({
+        maxClusterRadius: 52,
+        disableClusteringAtZoom: 16,
+        spiderfyOnMaxZoom: true,
+        showCoverageOnHover: false,
+        chunkedLoading: true,
+        iconCreateFunction: c => this.clusterIcon(c)
+      });
+      this.markers = this.markers || {};
+      this.markers[mapId] = [];
+      SPOTS.forEach((spot, i) => {
+        if (spot.reported) return;
+        const state = spot.available ? 'green' : 'red';
+        const m = L.marker([spot.lat, spot.lng], {
+          icon: this.pinIcon(state, false, spot.community, spot.reported),
+          aeIndex: i,
+          aeAvailable: !!spot.available,
+          aeState: state
+        });
+        m.bindPopup(this.popupHtml(i));
+        m.on('click', () => m.openPopup());
+        this.spotCluster.addLayer(m);
+        this.markers[mapId][i] = m;
+      });
+      this.spotCluster.addTo(map);
+      this.mapLayers[mapId] = this.spotCluster;
+    },
+
+    pinIcon(state, hard, community, reported) {
+      if (community) {
+        return L.divIcon({
+          className: 'pin-wrap' + (reported ? ' pin-reported' : ''),
+          html: '<div class="pin-community"></div>',
+          iconSize: [16, 16], iconAnchor: [8, 8]
+        });
+      }
+      const cls = (state === 'green' ? 'pin-green' : 'pin-red') + (hard ? ' hard' : '');
+      const big = state === 'green';
+      return L.divIcon({
+        className: 'pin-wrap' + (reported ? ' pin-reported' : ''),
+        html: '<div class="' + cls + '"></div>',
+        iconSize: big ? [16, 16] : [12, 12],
+        iconAnchor: big ? [8, 8] : [6, 6]
+      });
+    },
+
+    popupHtml(i) {
+      const s = SPOTS[i];
+      const title = s.street + ' ' + s.num;
+      const comm = s.community ? '<br><span style="color:var(--amber);font-size:11px">◎ Community</span>' : '';
+      const rep = s.reported ? '' : this.popupReportHtml(i);
+      if (s.available) {
+        return '<strong>✅ ' + title + '</strong><br><span style="color:#6B7280;font-size:12px">' +
+          s.detail + '</span>' + comm +
+          '<button class="popup-btn" onclick="App.claimSpot(' + i + ')">Claim this Misto →</button>' + rep;
+      }
+      return '<strong>🔴 Occupied</strong><br><span style="font-weight:600">' + title +
+        '</span><br><span style="color:#6B7280;font-size:12px">' + s.detail + '</span>' + comm + rep;
+    },
+
+    addPinsToGroup(group, mapId, pinOpts) {
+      const hardAll = pinOpts === true;
+      const emphasizeIdx = pinOpts && typeof pinOpts === 'object' ? pinOpts.emphasizeIdx : null;
+      this.markers = this.markers || {};
+      this.markers[mapId] = [];
+      SPOTS.forEach((spot, i) => {
+        if (spot.reported) return;
+        const state = spot.available ? 'green' : 'red';
+        const near = this.nearbyIndices && this.nearbyIndices.has(i);
+        const pulse = (hardAll && spot.available) || (emphasizeIdx === i && spot.available) ||
+          (near && spot.available && emphasizeIdx == null);
+        const m = L.marker([spot.lat, spot.lng], {
+          icon: this.pinIcon(state, pulse, spot.community, spot.reported)
+        }).addTo(group);
+        m.bindPopup(this.popupHtml(i));
+        m.on('click', () => m.openPopup());
+        this.markers[mapId][i] = m;
+      });
+    },
+
+    getStats() {
+      const total = SPOTS.length;
+      const available = SPOTS.filter(s => s.available).length;
+      return { total, available, occupied: total - available };
+    },
+
+    updateHomeSheet() {
+      const st = this.getStats();
+      const occ = document.getElementById('occ-label');
+      const red = document.getElementById('occ-red');
+      const teal = document.getElementById('occ-teal');
+      if (occ) occ.textContent = st.occupied + ' of ' + st.total + ' spots taken';
+      if (red && teal) {
+        const pct = (st.occupied / st.total) * 100;
+        red.style.flex = '0 0 ' + pct + '%';
+        teal.style.flex = '1';
+      }
+      const box = document.getElementById('sheet-streets');
+      if (!box) return;
+      const byStreet = {};
+      SPOTS.forEach((s, idx) => {
+        if (!byStreet[s.street]) byStreet[s.street] = { total: 0, avail: 0, lat: s.lat, lng: s.lng, flyIdx: idx };
+        byStreet[s.street].total++;
+        if (s.available) { byStreet[s.street].avail++; byStreet[s.street].flyIdx = idx; }
+      });
+      const sorted = Object.entries(byStreet).sort((a, b) => b[1].avail - a[1].avail);
+      const top = sorted.slice(0, 5);
+      const more = sorted.length - top.length;
+      box.innerHTML = top.map(([name, d]) => {
+        const click = d.avail ? 'App.flyToSpot(' + d.flyIdx + ')' : 'App.flyToArea(' + d.lat + ',' + d.lng + ')';
+        const badge = d.avail ? '<span class="badge-teal">' + d.avail + ' free</span>' : '<span style="color:var(--muted)">Full</span>';
+        return '<div class="street-row" onclick="' + click + '"><span>' + (d.avail ? '✅' : '🔴') + ' ' + name + '</span>' + badge + '</div>';
+      }).join('') + (more > 0 ? '<p style="font-size:11px;color:var(--muted);padding:8px 0 0">+' + more + ' more streets · zoom map for details</p>' : '');
+    },
+
+    setMapLock(id, locked) {
+      const map = this.maps[id];
+      if (!map) return;
+      const fn = locked ? 'disable' : 'enable';
+      map.dragging[fn](); map.touchZoom[fn](); map.scrollWheelZoom[fn](); map.doubleClickZoom[fn]();
+    },
+
+    initMap(id, opts = {}) {
       const map = L.map(id, {
         center: CENTER,
-        zoom: opts.zoom || 16,
+        zoom: 16,
+        minZoom: 14,
+        maxZoom: 19,
         zoomControl: false,
         attributionControl: false
       });
       L.tileLayer(TILE, { subdomains: 'abcd', maxZoom: 20 }).addTo(map);
-      this.lockMap(map);
+      this.addMapControls(map);
 
-      if (opts.pins) this.addPins(map, FREE, opts.popup);
-      if (opts.highlight) {
-        L.circle(PARKING[FREE], {
-          radius: 40, color: '#00D4AA', fillColor: '#00D4AA',
-          fillOpacity: 0.15, weight: 2
-        }).addTo(map);
-        L.marker(PARKING[FREE], { icon: this.pinIcon(true, false), interactive: false }).addTo(map);
-        map.setView(PARKING[FREE], 17);
+      if (opts.mode === 'home') {
+        this.addPinsToHomeMap(map, id);
+        map.setMinZoom(14);
+        const self = this;
+        map.on('click', e => { if (self.addSpotMode) self.addCommunitySpot(e.latlng.lat, e.latlng.lng); });
+        this.updateUserOnMap(id);
+        this.focusMapOnUser(false, { openPopup: true });
+        this.renderCrowds(id);
       }
-      if (opts.route) {
-        this.addPins(map, FREE, false, opts.hardGreen);
+      if (opts.mode === 'highlight') {
+        const g = L.layerGroup().addTo(map);
+        this.mapLayers[id] = g;
+        const parked = USER_PARKED;
+        L.circle(parked, {
+          radius: 40, color: '#3B82F6', fillColor: '#3B82F6',
+          fillOpacity: 0.12, weight: 2
+        }).addTo(g);
+        L.marker(parked, { icon: this.userLocIcon() })
+          .bindPopup('<strong>Your spot</strong><br><span style="color:#6B7280;font-size:12px">' +
+            USER_SPOT.street + ' ' + USER_SPOT.num + ', ' + USER_SPOT.label + '</span>').addTo(g);
+        map.setView(parked, 17);
+      }
+      if (opts.mode === 'find') {
+        const g = L.layerGroup().addTo(map);
+        this.mapLayers[id] = g;
+        const claimIdx = this.claimSpotIdx();
+        this.addPinsToGroup(g, id, { emphasizeIdx: claimIdx });
+        const u = this.getUserPos();
+        const dest = coords(claimIdx);
         const route = [];
-        for (let i = 0; i <= 20; i++) {
-          const f = i / 20;
-          route.push([
-            SEEKER[0] + (PARKING[FREE][0] - SEEKER[0]) * f,
-            SEEKER[1] + (PARKING[FREE][1] - SEEKER[1]) * f
-          ]);
+        for (let i = 0; i <= 24; i++) {
+          const f = i / 24;
+          route.push([u[0] + (dest[0] - u[0]) * f, u[1] + (dest[1] - u[1]) * f]);
         }
-        L.polyline(route, { color: '#3B82F6', weight: 3, dashArray: '8,10' }).addTo(map);
-        L.marker(SEEKER, {
-          icon: L.divIcon({
-            className: 'seeker-wrap',
-            html: '<div class="seeker-dot"></div>',
-            iconSize: [14, 14], iconAnchor: [7, 7]
-          }),
-          interactive: false
-        }).addTo(map);
+        L.polyline(route, { color: '#3B82F6', weight: 3, dashArray: '8,10' }).addTo(g);
+        const uPos = this.getUserPos();
+        L.marker(uPos, { icon: this.userLocIcon() })
+          .bindPopup('<strong>You are here</strong><br><span style="color:#6B7280;font-size:12px">' + USER_DEFAULT_LABEL + '</span>').addTo(g);
+        map.fitBounds(L.latLngBounds(route), { padding: [40, 40], maxZoom: 17 });
       }
+      if (opts.mode === 'nav') map.setView(CENTER, 16);
 
       this.maps[id] = map;
       return map;
@@ -830,10 +2646,11 @@
     },
 
     resetShare() {
-      document.getElementById('share-btn').style.display = 'flex';
-      document.getElementById('share-btn').className = 'btn btn-teal';
-      document.getElementById('share-btn').textContent = 'SHARE MY MISTO 🎯';
-      document.getElementById('share-success').classList.remove('show');
+      const shareBtn = document.getElementById('demo-target-share');
+      shareBtn.style.display = 'flex';
+      shareBtn.className = 'btn btn-teal';
+      shareBtn.textContent = 'SHARE MY MISTO 🎯';
+      document.getElementById('demo-target-share-success').classList.remove('show');
       document.getElementById('confetti').innerHTML = '';
       if (this.shareTimer) clearTimeout(this.shareTimer);
     },
@@ -865,7 +2682,7 @@
     },
 
     shareSpot() {
-      const btn = document.getElementById('share-btn');
+      const btn = document.getElementById('demo-target-share');
       btn.className = 'btn btn-success';
       btn.textContent = '✓ Shared!';
       this.confetti();
@@ -873,58 +2690,522 @@
       const from = this.points;
       this.points += 10;
       this.updatePoints();
+      this.bumpStat('shares', 1);
+      this.releaseSharedParkedSpot();
+      this.updateHomeSheet();
       setTimeout(() => {
         btn.style.display = 'none';
-        document.getElementById('share-success').classList.add('show');
+        document.getElementById('demo-target-share-success').classList.add('show');
         this.animateOdometer(from, this.points);
         playDing();
-        this.shareTimer = setTimeout(() => App.go(1), 2000);
+        if (!this.demoActive) this.shareTimer = setTimeout(() => App.go(1), 2000);
       }, 400);
     },
 
-    destroyMap(id) {
-      if (this.maps[id]) {
-        this.maps[id].remove();
-        delete this.maps[id];
+    demoShareSpot() {
+      const btn = document.getElementById('demo-target-share');
+      btn.className = 'btn btn-success';
+      btn.textContent = '✓ Shared!';
+      this.confetti();
+      playDing();
+      const from = this.points;
+      this.points += 10;
+      this.updatePoints();
+      this.bumpStat('shares', 1);
+      this.releaseSharedParkedSpot();
+      this.updateHomeSheet();
+      setTimeout(() => {
+        btn.style.display = 'none';
+        document.getElementById('demo-target-share-success').classList.add('show');
+        this.animateOdometer(from, this.points);
+        playDing();
+      }, 400);
+    },
+
+    demoRoot() {
+      return document.querySelector('.screen-area');
+    },
+
+    async waitForLayout() {
+      await delay(50);
+      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+    },
+
+    activeEl(selector) {
+      const screen = document.querySelector('.screen.active');
+      return screen ? screen.querySelector(selector) : null;
+    },
+
+    async highlightEl(el, pad) {
+      pad = pad == null ? 10 : pad;
+      if (!el) return;
+      const root = this.demoRoot();
+      const screen = document.querySelector('.screen.active');
+      if (!root || !screen || !screen.contains(el)) return;
+
+      const scroller = el.closest('.scroll-body') || el.closest('.bottom-sheet');
+      if (scroller && scroller.scrollHeight > scroller.clientHeight) {
+        const er0 = el.getBoundingClientRect();
+        const sr = scroller.getBoundingClientRect();
+        if (er0.top < sr.top || er0.bottom > sr.bottom) {
+          el.scrollIntoView({ block: 'center', behavior: 'instant' });
+          await this.waitForLayout();
+        }
       }
+
+      const rr = root.getBoundingClientRect();
+      const er = el.getBoundingClientRect();
+      if (er.width < 4 || er.height < 4) return;
+
+      const sp = document.getElementById('demo-spotlight');
+      sp.style.left = Math.round(er.left - rr.left - pad) + 'px';
+      sp.style.top = Math.round(er.top - rr.top - pad) + 'px';
+      sp.style.width = Math.round(er.width + pad * 2) + 'px';
+      sp.style.height = Math.round(er.height + pad * 2) + 'px';
+      sp.classList.add('show');
+      this.scheduleCoachReposition();
+    },
+
+    scheduleCoachReposition() {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => this.positionCoachAwayFromSpotlight());
+      });
+    },
+
+    highlightMapPoint(mapId, latlng, size) {
+      const map = this.maps[mapId];
+      const root = this.demoRoot();
+      if (!map || !root) return;
+      size = size || 56;
+      const pt = map.latLngToContainerPoint(latlng);
+      const mr = map.getContainer().getBoundingClientRect();
+      const rr = root.getBoundingClientRect();
+      const sp = document.getElementById('demo-spotlight');
+      const x = mr.left - rr.left + pt.x;
+      const y = mr.top - rr.top + pt.y;
+      sp.style.left = Math.round(x - size / 2) + 'px';
+      sp.style.top = Math.round(y - size / 2) + 'px';
+      sp.style.width = size + 'px';
+      sp.style.height = size + 'px';
+      sp.classList.add('show');
+      this.scheduleCoachReposition();
+    },
+
+    clearPinHighlight() {
+      document.querySelectorAll('.pin-demo-pulse').forEach(el => el.classList.remove('pin-demo-pulse'));
+      document.querySelectorAll('.pin-wrap.pin-demo-target').forEach(el => el.classList.remove('pin-demo-target'));
+      const mapId = this.demoHighlightMapId || 'map-1';
+      if (this.demoHighlightIdx != null && this.markers[mapId]) {
+        const i = this.demoHighlightIdx;
+        const m = this.markers[mapId][i];
+        const spot = SPOTS[i];
+        if (m && spot && !spot.reported) {
+          const state = spot.available ? 'green' : 'red';
+          m.setIcon(this.pinIcon(state, false, spot.community, spot.reported));
+        }
+      }
+      this.demoHighlightIdx = null;
+      this.demoHighlightMapId = null;
+    },
+
+    highlightPin(mapId, idx, spotlightSize) {
+      this.clearPinHighlight();
+      const m = this.markers[mapId] && this.markers[mapId][idx];
+      if (!m) return;
+      const spot = SPOTS[idx];
+      if (!spot || spot.reported) return;
+      const state = spot.available ? 'green' : 'red';
+      m.setIcon(this.pinIcon(state, spot.available, spot.community, spot.reported));
+      const wrap = m.getElement();
+      if (wrap) {
+        wrap.classList.add('pin-demo-target');
+        const pin = wrap.querySelector('.pin-green, .pin-red');
+        if (pin) pin.classList.add('pin-demo-pulse');
+      }
+      this.demoHighlightIdx = idx;
+      this.demoHighlightMapId = mapId;
+      const ll = m.getLatLng();
+      this.highlightMapPoint(mapId, [ll.lat, ll.lng], spotlightSize || 68);
+    },
+
+    clearHighlight() {
+      document.getElementById('demo-spotlight').classList.remove('show');
+      this.clearPinHighlight();
+      const coach = document.getElementById('demo-coach');
+      coach.classList.remove('coach-dynamic');
+      coach.style.top = '';
+      coach.style.bottom = '';
+    },
+
+    setCoachPlace(place) {
+      const c = document.getElementById('demo-coach');
+      c.classList.remove('coach-top', 'coach-below-header', 'coach-above-sheet', 'coach-find', 'coach-scroll', 'coach-dynamic', 'coach-hide');
+      c.style.top = '';
+      c.style.bottom = '';
+      if (place) c.classList.add(place);
+    },
+
+    hideCoach() {
+      const c = document.getElementById('demo-coach');
+      c.classList.add('coach-hide');
+      c.classList.remove('show');
+    },
+
+    coach(title, text, place) {
+      const c = document.getElementById('demo-coach');
+      const sp = document.getElementById('demo-spotlight');
+      document.getElementById('demo-coach-title').textContent = title;
+      document.getElementById('demo-coach-text').textContent = text;
+      c.classList.remove('coach-hide');
+      c.classList.add('show');
+      if (sp.classList.contains('show')) {
+        this.scheduleCoachReposition();
+      } else if (place) {
+        this.setCoachPlace(place);
+      }
+    },
+
+    positionCoachAwayFromSpotlight() {
+      const sp = document.getElementById('demo-spotlight');
+      const coach = document.getElementById('demo-coach');
+      const root = this.demoRoot();
+      if (!sp.classList.contains('show') || !root || !coach.classList.contains('show')) return;
+
+      coach.classList.remove('coach-top', 'coach-below-header', 'coach-above-sheet', 'coach-find', 'coach-scroll');
+      coach.classList.add('coach-dynamic');
+
+      const rr = root.getBoundingClientRect();
+      const sr = sp.getBoundingClientRect();
+      const spotTop = sr.top - rr.top;
+      const spotBottom = sr.bottom - rr.top;
+      const spotMid = (spotTop + spotBottom) / 2;
+      const rootH = rr.height;
+      const roomBelow = rootH - spotBottom;
+      const roomAbove = spotTop;
+      const gap = 14;
+      const coachH = coach.offsetHeight || 90;
+      const need = coachH + gap;
+
+      if (spotMid < rootH * 0.38) {
+        coach.style.top = 'auto';
+        coach.style.bottom = '12px';
+        return;
+      }
+      if (spotMid > rootH * 0.62) {
+        coach.style.top = '48px';
+        coach.style.bottom = 'auto';
+        return;
+      }
+      if (roomBelow >= need) {
+        coach.style.top = Math.round(spotBottom + gap) + 'px';
+        coach.style.bottom = 'auto';
+      } else if (roomAbove >= need) {
+        coach.style.top = 'auto';
+        coach.style.bottom = Math.round(rootH - spotTop + gap) + 'px';
+      } else if (roomBelow >= roomAbove) {
+        coach.style.top = 'auto';
+        coach.style.bottom = '12px';
+      } else {
+        coach.style.top = '48px';
+        coach.style.bottom = 'auto';
+      }
+    },
+
+    async startDemo() {
+      if (this.demoActive) return;
+      this.demoActive = true;
+      this.demoAborted = false;
+      this.claimedSpotIdx = null;
+      ['map-1', 'map-2', 'map-3', 'map-4'].forEach(id => {
+        if (this.maps[id]) { this.maps[id].remove(); delete this.maps[id]; delete this.mapLayers[id]; if (id === 'map-1') this.spotCluster = null; }
+      });
+      this.markers = {};
+      document.querySelector('.phone').classList.add('demo-active');
+      document.getElementById('demo-ui').classList.add('active');
+      document.getElementById('demo-start-btn').disabled = true;
+      document.getElementById('map-sheet').classList.add('collapsed');
+      this.setCoachPlace('coach-top');
+
+      this.go(1);
+      await delay(500);
+      let map = this.maps['map-1'];
+      if (!map) { this.ensureMap('map-1', { mode: 'home' }); map = this.maps['map-1']; }
+      this.setMapLock('map-1', true);
+
+      const total = 60000;
+      const t0 = Date.now();
+      const prog = setInterval(() => {
+        if (this.demoAborted) return;
+        const p = Math.min(100, ((Date.now() - t0) / total) * 100);
+        document.getElementById('demo-progress-fill').style.width = p + '%';
+      }, 120);
+      this.demoTimers.push(prog);
+
+      const fi = getFreeIdx(true);
+      const fc = coords(fi);
+      const fs = SPOTS[fi];
+      const spotLabel = fs.street + ' ' + fs.num;
+
+      try {
+        /* 1 · Map — you in Centar */
+        this.setDefaultUserLocation();
+        this.focusMapOnUser(false, { openPopup: true, keepLocation: true });
+        this.coach('📍 Centar, Split', 'Red = taken, green = free. The map updates live as neighbors come and go.', 'coach-top');
+        await delay(4500);
+        if (this.demoAborted) return;
+
+        /* 2 · Share — you leave Marmontova 12 */
+        this.setDemoUserLocation(USER_PARKED[0], USER_PARKED[1], { label: 'Marmontova 12 · your spot' });
+        this.focusMapOnUser(true, { keepLocation: true, zoom: 17 });
+        document.getElementById('map-sheet').classList.remove('collapsed');
+        map.invalidateSize();
+        await this.waitForLayout();
+        this.coach('🚗 Leaving?', 'Tap I\'m Leaving to tell others your spot is opening up.', 'coach-above-sheet');
+        await delay(3200);
+        await this.highlightEl(document.getElementById('demo-target-leaving'));
+        await delay(2400);
+        if (this.demoAborted) return;
+        this.clearHighlight();
+        await delay(400);
+
+        this.go(2);
+        await delay(800);
+        await this.waitForLayout();
+        this.coach('🚗 Share your Misto', 'One tap — Marmontova 12 goes live for people nearby.', 'coach-scroll');
+        await delay(2200);
+        await this.highlightEl(document.getElementById('demo-target-share'));
+        await delay(1800);
+        this.demoShareSpot();
+        await delay(1000);
+        await this.highlightEl(document.getElementById('demo-target-share-success'));
+        await delay(3400);
+        if (this.demoAborted) return;
+        this.clearHighlight();
+        this.resetShare();
+        await delay(400);
+
+        /* 3 · Find — claim a nearby opening */
+        this.claimedSpotIdx = fi;
+        this.syncFindLabels();
+        this.setDemoUserLocation(USER_CENTAR[0], USER_CENTAR[1], { label: 'Looking for parking' });
+        this.coach('🔍 Find parking', spotLabel + ' is free nearby — claim it before someone else.', 'coach-find');
+        this.go(3);
+        await delay(800);
+        await this.waitForLayout();
+        map = this.maps['map-3'];
+        if (map) map.flyToBounds(L.latLngBounds([this.getUserPos(), fc]), { padding: [50, 50], duration: 1.6, maxZoom: 16 });
+        await delay(1800);
+        this.hideCoach();
+        this.highlightPin('map-3', fi, 64);
+        await this.highlightEl(document.getElementById('demo-target-find-banner'));
+        this.coach('🔍 Find parking', spotLabel + ' just opened — tap Claim when you are ready.', 'coach-find');
+        await delay(4000);
+        if (this.demoAborted) return;
+        this.clearHighlight();
+        await delay(300);
+
+        /* 4 · Navigate — walk to your reserved spot */
+        this.coach('🎯 Navigate', 'Reserved — follow the route to ' + spotLabel + '.', 'coach-find');
+        this.claimSpot(fi);
+        await delay(600);
+        await this.waitForLayout();
+        map = this.maps['map-4'];
+        if (map) map.flyToBounds(L.latLngBounds([this.getUserPos(), fc]), { padding: [48, 48], duration: 1.5, maxZoom: 16 });
+        await delay(1600);
+        this.hideCoach();
+        await this.highlightEl(document.getElementById('demo-target-nav-timer'));
+        this.coach('🎯 Navigate', 'Timer counts down while you walk — less circling, less stress.', 'coach-scroll');
+        if (this.navDemoTimer) clearTimeout(this.navDemoTimer);
+        this.navDemoTimer = setTimeout(() => {
+          this.setDemoUserLocation(fc[0], fc[1], { label: spotLabel });
+          this.showParkSuccess();
+        }, 3800);
+        await delay(4200);
+        if (this.demoAborted) return;
+        this.clearHighlight();
+        await delay(400);
+
+        /* 5 · Tvoji Gušti */
+        document.getElementById('park-success').classList.remove('show');
+        this.clearNavOverlay();
+        this.updatePoints();
+        this.updateCo2WalletStrip();
+        this.go(5);
+        await delay(600);
+        await this.waitForLayout();
+        const walletScroll = document.querySelector('#screen-5 .scroll-body');
+        if (walletScroll) walletScroll.scrollTop = 0;
+        this.hideCoach();
+        await this.highlightEl(document.getElementById('demo-target-wallet'));
+        this.coach('💰 Tvoji Gušti', 'You earned Gušti for sharing and claiming a Misto.', 'coach-scroll');
+        await delay(3000);
+        if (this.demoAborted) return;
+        this.clearHighlight();
+        if (walletScroll) {
+          const rewards = document.getElementById('demo-target-wallet-rewards');
+          if (rewards) walletScroll.scrollTop = Math.max(0, rewards.offsetTop - 12);
+        }
+        await delay(250);
+        await this.waitForLayout();
+        this.hideCoach();
+        await this.highlightEl(document.getElementById('demo-target-wallet-rewards'));
+        this.coach('💰 Spend locally', 'Redeem at cafés, shops, and partners around Split.', 'coach-scroll');
+        await delay(2800);
+        if (this.demoAborted) return;
+        this.clearHighlight();
+        await this.highlightEl(document.getElementById('demo-target-qr-btn'));
+        this.coach('☕ Gušti Pay', 'Tap Get QR Code — show it at the partner to redeem.', 'coach-scroll');
+        await delay(1600);
+        if (this.demoAborted) return;
+        this.clearHighlight();
+        this.hideCoach();
+        this.demoOpenQR('Kafić Zlatna Vrata');
+        playDing();
+        await delay(3200);
+        this.closeQR();
+        if (this.demoAborted) return;
+        await delay(200);
+
+        /* 6 · Impact */
+        const co2Kg = this.computeUserCo2Kg();
+        const eqKm = Math.round(co2Kg * 4.2);
+        const eqMin = Math.round(co2Kg * 35);
+        const eqTrees = Math.max(1, Math.round(co2Kg / 6));
+        this.go(7);
+        await delay(600);
+        await this.waitForLayout();
+        const impactScroll = document.querySelector('#screen-7 .scroll-body');
+        if (impactScroll) impactScroll.scrollTop = 0;
+        this.renderImpact();
+        this.hideCoach();
+        await this.highlightEl(document.getElementById('demo-target-co2-hero'));
+        this.coach('🌱 CO₂ avoided', 'Every shared and claimed Misto adds up in Centar.', 'coach-scroll');
+        await this.animateCo2Count(0, co2Kg, 1500);
+        await delay(2700);
+        if (this.demoAborted) return;
+        this.clearHighlight();
+        await delay(200);
+        this.hideCoach();
+        await this.highlightEl(document.getElementById('demo-target-co2-equiv'));
+        this.coach('🌱 Real savings', eqKm + ' km not driven · ' + eqMin + ' min saved · ~' + eqTrees + ' tree-year', 'coach-scroll');
+        await delay(3700);
+        if (this.demoAborted) return;
+        this.clearHighlight();
+        if (impactScroll) {
+          const board = document.getElementById('demo-target-co2-board');
+          if (board) impactScroll.scrollTop = Math.max(0, board.offsetTop - 16);
+        }
+        await delay(250);
+        await this.waitForLayout();
+        this.hideCoach();
+        await this.highlightEl(document.getElementById('demo-target-co2-board'));
+        this.coach('🏆 Centar rank', 'See how your neighborhood compares on the leaderboard.', 'coach-scroll');
+        await delay(3900);
+        if (this.demoAborted) return;
+        this.clearHighlight();
+        await delay(200);
+
+        /* Done */
+        this.setDefaultUserLocation();
+        document.getElementById('map-sheet').classList.add('collapsed');
+        this.coach('You\'re set', 'Share when you leave, claim when you arrive. Explore the map anytime.', 'coach-top');
+        this.go(1);
+        await delay(600);
+        this.focusMapOnUser(true, { openPopup: true, keepLocation: true, zoom: 17 });
+        await delay(2600);
+        this.bumpStat('demoDone', 1);
+      } catch (e) { /* demo interrupted */ }
+      this.stopDemo();
+    },
+
+    stopDemo() {
+      this.demoAborted = true;
+      this.demoActive = false;
+      this.demoTimers.forEach(t => clearInterval(t));
+      this.demoTimers = [];
+      if (this.navTimer) clearInterval(this.navTimer);
+      if (this.navDemoTimer) clearTimeout(this.navDemoTimer);
+      if (this.shareTimer) clearTimeout(this.shareTimer);
+      if (this.qrTimer) clearInterval(this.qrTimer);
+      this.closeQR();
+      document.querySelector('.phone').classList.remove('demo-active');
+      document.getElementById('demo-ui').classList.remove('active');
+      document.getElementById('demo-start-btn').disabled = false;
+      document.getElementById('demo-progress-fill').style.width = '0%';
+      this.clearHighlight();
+      this.hideCoach();
+      this.claimedSpotIdx = null;
+      document.getElementById('park-success').classList.remove('show');
+      ['map-1', 'map-2', 'map-3', 'map-4'].forEach(id => this.setMapLock(id, false));
+      this.resetShare();
+      this.setDefaultUserLocation();
+      this.setCoachPlace('coach-top');
+      this.go(1);
+    },
+
+    clearNavOverlay() {
+      if (this.navOverlay && this.maps['map-4']) {
+        this.maps['map-4'].removeLayer(this.navOverlay);
+        this.navOverlay = null;
+      }
+      if (this.seekerAnim) cancelAnimationFrame(this.seekerAnim);
+      this.navPaused = false;
     },
 
     startNav() {
       document.getElementById('park-success').classList.remove('show');
-      this.destroyMap('map-4');
-      const map = this.initMap('map-4', {});
-      PARKING.forEach((coords, i) => {
-        L.marker(coords, { icon: this.pinIcon(i === FREE, i === FREE), interactive: false }).addTo(map);
-      });
-      if (FREE >= 0) {
-        L.circle(PARKING[FREE], {
-          radius: 35, color: '#00D4AA', fillColor: '#00D4AA',
-          fillOpacity: 0.2, weight: 2
-        }).addTo(map);
+      this.clearNavOverlay();
+      const map = this.ensureMap('map-4', { mode: 'nav' });
+      if (!this.mapLayers['map-4']) {
+        this.mapLayers['map-4'] = L.layerGroup().addTo(map);
       }
+      this.clearNavOverlay();
+      const overlay = L.layerGroup().addTo(map);
+      this.navOverlay = overlay;
+
+      SPOTS.forEach((spot, i) => {
+        const st = spot.available ? 'green' : 'red';
+        const m = L.marker([spot.lat, spot.lng], { icon: this.pinIcon(st, spot.available) }).addTo(overlay);
+        m.bindPopup(this.popupHtml(i));
+        m.on('click', () => m.openPopup());
+      });
+      const claimIdx = this.claimSpotIdx();
+      L.circle(coords(claimIdx), {
+        radius: 35, color: '#00D4AA', fillColor: '#00D4AA',
+        fillOpacity: 0.2, weight: 2
+      }).addTo(overlay);
+
+      const u = this.getUserPos();
+      const dest = coords(claimIdx);
       const route = [];
       for (let i = 0; i <= 30; i++) {
         const f = i / 30;
-        route.push([
-          SEEKER[0] + (PARKING[FREE][0] - SEEKER[0]) * f,
-          SEEKER[1] + (PARKING[FREE][1] - SEEKER[1]) * f
-        ]);
+        route.push([u[0] + (dest[0] - u[0]) * f, u[1] + (dest[1] - u[1]) * f]);
       }
-      L.polyline(route, { color: '#3B82F6', weight: 3, dashArray: '8,10' }).addTo(map);
-      const seeker = L.marker(SEEKER, {
+      L.polyline(route, { color: '#3B82F6', weight: 3, dashArray: '8,10' }).addTo(overlay);
+      const seeker = L.marker(this.getUserPos(), {
         icon: L.divIcon({
           className: 'seeker-wrap',
           html: '<div class="seeker-dot"></div>',
           iconSize: [14, 14], iconAnchor: [7, 7]
         })
-      }).addTo(map);
+      }).addTo(overlay);
+
+      map.fitBounds(L.latLngBounds(route), { padding: [50, 50], maxZoom: 17 });
+      if (!map._aeNavHook) {
+        map.on('dragstart', () => { this.navPaused = true; });
+        map._aeNavHook = true;
+      }
 
       let t = 0;
-      if (this.seekerAnim) cancelAnimationFrame(this.seekerAnim);
       const move = () => {
-        t = Math.min(1, t + 0.002);
-        seeker.setLatLng(route[Math.floor(t * (route.length - 1))]);
-        if (t < 1) this.seekerAnim = requestAnimationFrame(move);
+        if (!this.navPaused) {
+          t = Math.min(1, t + (this.demoActive ? 0.014 : 0.002));
+          seeker.setLatLng(route[Math.floor(t * (route.length - 1))]);
+        }
+        if (t < 1 && !document.getElementById('park-success').classList.contains('show')) {
+          this.seekerAnim = requestAnimationFrame(move);
+        }
       };
       this.seekerAnim = requestAnimationFrame(move);
 
@@ -945,8 +3226,12 @@
     },
 
     showParkSuccess() {
+      this.bumpStat('parked', 1);
+      const co2El = document.getElementById('park-success-co2');
+      if (co2El) co2El.textContent = '🟢 -0.4kg';
       if (this.navTimer) clearInterval(this.navTimer);
       if (this.navDemoTimer) clearTimeout(this.navDemoTimer);
+      if (this.demoActive) this.hideCoach();
       document.getElementById('park-success').classList.add('show');
       const svg = document.querySelector('#park-success .check-svg');
       if (svg) {
@@ -958,13 +3243,15 @@
     finishNav() {
       if (this.navTimer) clearInterval(this.navTimer);
       if (this.navDemoTimer) clearTimeout(this.navDemoTimer);
-      if (this.seekerAnim) cancelAnimationFrame(this.seekerAnim);
+      this.clearNavOverlay();
+      this.claimedSpotIdx = null;
       this.go(1);
     },
 
-    openQR(merchant) {
-      const canvas = document.getElementById('qr-canvas');
-      generateFakeQR(canvas);
+    demoOpenQR(merchant) {
+      const titleEl = document.getElementById('qr-modal-title');
+      if (titleEl) titleEl.textContent = 'Show this to the cashier';
+      renderAeQR(merchant, this.points);
       document.getElementById('qr-merchant').textContent = merchant;
       document.getElementById('qr-modal').classList.add('show');
       let s = 299;
@@ -977,6 +3264,144 @@
       }, 1000);
     },
 
+    openQR(merchant, cost, digital) {
+      if (cost != null && cost > 0) {
+        if (this.points < cost) {
+          alert('Not enough Gušti — you need ' + cost + ' but have ' + this.points + '.');
+          return;
+        }
+        this.points -= cost;
+        this.updatePoints();
+        playDing();
+      }
+      this.bumpStat('redeems', 1);
+      const titleEl = document.getElementById('qr-modal-title');
+      if (titleEl) {
+        titleEl.textContent = digital
+          ? 'Voucher active — show this code'
+          : 'Show this to the cashier';
+      }
+      renderAeQR(merchant, this.points);
+      document.getElementById('qr-merchant').textContent = merchant;
+      document.getElementById('qr-modal').classList.add('show');
+      let s = 299;
+      const exp = document.getElementById('qr-expiry');
+      if (this.qrTimer) clearInterval(this.qrTimer);
+      this.qrTimer = setInterval(() => {
+        s--;
+        exp.textContent = 'Expires in ' + Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+        if (s <= 0) clearInterval(this.qrTimer);
+      }, 1000);
+    },
+
+    loadSession() {
+      try {
+        const flag = localStorage.getItem('ae_logged_in');
+        const raw = localStorage.getItem('ae_user');
+        if (flag === '0') {
+          this.loggedIn = false;
+          this.user = null;
+        } else if (raw) {
+          this.user = JSON.parse(raw);
+          this.loggedIn = true;
+        }
+      } catch (e) {}
+      this.updateProfileBtn();
+    },
+
+    saveSession() {
+      try {
+        if (this.loggedIn && this.user) {
+          localStorage.setItem('ae_logged_in', '1');
+          localStorage.setItem('ae_user', JSON.stringify(this.user));
+        } else {
+          localStorage.setItem('ae_logged_in', '0');
+          localStorage.removeItem('ae_user');
+        }
+      } catch (e) {}
+    },
+
+    initialsFromName(name) {
+      return name.split(/\s+/).filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase() || '?';
+    },
+
+    updateProfileBtn() {
+      const btn = document.getElementById('profile-btn');
+      if (!btn) return;
+      if (this.loggedIn && this.user) {
+        btn.textContent = this.user.initials || this.initialsFromName(this.user.name);
+        btn.classList.remove('guest');
+        btn.title = this.user.name;
+      } else {
+        btn.textContent = '?';
+        btn.classList.add('guest');
+        btn.title = 'Prijavi se';
+      }
+    },
+
+    openProfile() {
+      this.profileReturn = this.screen;
+      this.go(6);
+    },
+
+    closeProfile() {
+      const back = this.profileReturn != null ? this.profileReturn : 1;
+      this.profileReturn = null;
+      this.go(back);
+    },
+
+    renderProfile() {
+      if (!this.stats) this.loadAchievements();
+      this.renderAchievements();
+      const guest = document.getElementById('profile-guest');
+      const logged = document.getElementById('profile-logged');
+      if (!guest || !logged) return;
+      if (this.loggedIn && this.user) {
+        guest.style.display = 'none';
+        logged.style.display = 'block';
+        const ini = this.user.initials || this.initialsFromName(this.user.name);
+        const set = (id, text) => { const n = document.getElementById(id); if (n) n.textContent = text; };
+        set('profile-avatar-lg', ini);
+        set('profile-name', this.user.name);
+        set('profile-email', this.user.email);
+        set('profile-stat-pts', String(this.points));
+        const tier = this.points >= 60 ? 'Stalni susjed' : (this.points >= 30 ? 'Redar' : 'Početnik');
+        set('profile-tier', tier + ' · Split');
+      } else {
+        guest.style.display = 'block';
+        logged.style.display = 'none';
+        const email = document.getElementById('login-email');
+        const pass = document.getElementById('login-pass');
+        if (email) email.value = '';
+        if (pass) pass.value = '';
+      }
+    },
+
+    mockLogin(e) {
+      if (e) e.preventDefault();
+      const emailEl = document.getElementById('login-email');
+      const email = (emailEl && emailEl.value.trim()) || 'susjed@ae.hr';
+      const local = email.split('@')[0].replace(/[._]/g, ' ');
+      const name = local.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') || 'Ae! User';
+      this.user = {
+        name: name,
+        email: email,
+        initials: this.initialsFromName(name)
+      };
+      this.loggedIn = true;
+      this.saveSession();
+      this.updateProfileBtn();
+      this.renderProfile();
+    },
+
+    mockLogout() {
+      this.loggedIn = false;
+      this.user = null;
+      this.saveSession();
+      this.updateProfileBtn();
+      this.renderProfile();
+    },
+
     closeQR() {
       document.getElementById('qr-modal').classList.remove('show');
       if (this.qrTimer) clearInterval(this.qrTimer);
@@ -986,6 +3411,16 @@
   document.getElementById('screen-0').addEventListener('click', () => App.go(1));
   setTimeout(() => { if (App.screen === 0) App.go(1); }, 2500);
   document.getElementById('bottom-nav').style.display = 'none';
+  document.getElementById('map-sheet').classList.add('collapsed');
+  App.loadSession();
+  App.loadAchievements();
+  App.updateCo2WalletStrip();
+  App.setDefaultUserLocation();
+  App.syncFindLabels();
+  setTimeout(() => App.updateHomeSheet(), 3200);
   </script>
 </body>
 </html>
+
+
+
