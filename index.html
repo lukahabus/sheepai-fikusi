@@ -4,8 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Ae! — Split Parking</title>
-  <link rel="icon" href="favicon.ico" sizes="any" />
-  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="icon" href="Ae_mini_ikona.png" type="image/png" />
+  <link rel="apple-touch-icon" href="Ae_mini_ikona.png" />
+  <meta name="theme-color" content="#0a0a0f" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet" />
@@ -141,10 +142,11 @@
       text-align: center; padding: 32px 24px;
       cursor: pointer;
     }
-    .splash-logo {
-      font-size: 96px; font-weight: 900; color: var(--teal);
-      line-height: 1; letter-spacing: -3px;
+    .app-icon { display: block; object-fit: contain; }
+    .splash-logo.app-icon {
+      width: min(56vw, 168px); height: auto; margin: 0 auto;
     }
+    .logo-sm.app-icon { width: 32px; height: 32px; flex-shrink: 0; }
     .splash-tag { font-size: 18px; color: #fff; margin-top: 16px; font-weight: 600; }
     .splash-sub { font-size: 14px; color: var(--muted); margin-top: 10px; line-height: 1.5; }
     .splash-dots { display: flex; gap: 8px; margin-top: 40px; justify-content: center; }
@@ -165,7 +167,7 @@
     .leaflet-container { background: var(--bg); font-family: inherit; touch-action: none; }
     .leaflet-grab { cursor: grab; }
     .leaflet-dragging .leaflet-grab { cursor: grabbing; }
-    .pin-wrap, .seeker-wrap { background: transparent !important; border: none !important; }
+    .pin-wrap, .seeker-wrap, .user-loc-wrap { background: transparent !important; border: none !important; }
     .pin-red {
       width: 12px; height: 12px; background: var(--red);
       border: 2px solid #fff; border-radius: 50%;
@@ -182,11 +184,31 @@
     @keyframes pulse-red { 50% { transform: scale(1.25); } }
     @keyframes pulse-green { 50% { transform: scale(1.15); } }
     @keyframes pulse-green-hard { 50% { transform: scale(1.35); box-shadow: 0 0 22px rgba(0,212,170,1); } }
+    .user-loc-pin {
+      display: flex; flex-direction: column; align-items: center; gap: 5px;
+      pointer-events: auto;
+    }
+    .user-loc-ring {
+      width: 44px; height: 44px; border-radius: 50%;
+      border: 2px solid rgba(59,130,246,0.55);
+      background: rgba(59,130,246,0.12);
+      display: flex; align-items: center; justify-content: center;
+      animation: user-ring 2.4s ease-in-out infinite;
+    }
+    @keyframes user-ring {
+      50% { transform: scale(1.08); border-color: rgba(59,130,246,0.9); background: rgba(59,130,246,0.2); }
+    }
     .user-loc-dot {
-      width: 16px; height: 16px; background: #fff;
+      width: 14px; height: 14px; background: #fff;
       border: 3px solid var(--blue); border-radius: 50%;
-      box-shadow: 0 0 0 6px rgba(59,130,246,0.25), 0 0 16px rgba(59,130,246,0.85);
-      animation: user-pulse 2s ease-in-out infinite;
+      box-shadow: 0 0 12px rgba(59,130,246,1);
+    }
+    .user-loc-label {
+      font-size: 11px; font-weight: 800; letter-spacing: 0.05em;
+      text-transform: uppercase; color: #fff;
+      background: var(--blue); padding: 3px 9px; border-radius: 8px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.45);
+      white-space: nowrap;
     }
     @keyframes user-pulse {
       50% { box-shadow: 0 0 0 10px rgba(59,130,246,0.12), 0 0 20px rgba(59,130,246,1); }
@@ -224,13 +246,6 @@
       font-size: 12px; font-weight: 600; text-align: center; display: none;
     }
     .map-add-hint.show { display: block; }
-    .nearby-chip {
-      position: absolute; left: 12px; z-index: 600; top: 132px;
-      padding: 6px 12px; border-radius: 20px;
-      background: rgba(19,19,26,0.9); border: 1px solid rgba(59,130,246,0.45);
-      font-size: 11px; font-weight: 700; color: var(--blue); display: none;
-    }
-    .nearby-chip.show { display: block; }
     .crowd-pin {
       width: 28px; height: 28px; border-radius: 50%;
       background: linear-gradient(145deg, #7c3aed, #a855f7);
@@ -375,8 +390,7 @@
     }
     .leaflet-popup-tip { background: var(--surface); }
     .leaflet-popup-content { margin: 12px 14px; font-size: 13px; line-height: 1.45; }
-    .leaflet-control-zoom a,
-    .map-recenter-btn {
+    .leaflet-control-zoom a {
       background: var(--surface) !important;
       color: var(--text) !important;
       border-color: var(--border) !important;
@@ -385,13 +399,7 @@
       line-height: 36px !important;
       font-size: 18px !important;
     }
-    .leaflet-control-zoom a:hover,
-    .map-recenter-btn:hover { background: #1c1c26 !important; color: var(--teal) !important; }
-    .map-recenter-wrap { border: none !important; box-shadow: none !important; }
-    .map-recenter-btn {
-      display: flex !important; align-items: center; justify-content: center;
-      text-decoration: none !important; border-radius: 0 0 4px 4px !important;
-    }
+    .leaflet-control-zoom a:hover { background: #1c1c26 !important; color: var(--teal) !important; }
     .map-box.has-sheet .leaflet-bottom.leaflet-right { bottom: calc(36% + 8px) !important; }
     .map-find .leaflet-bottom.leaflet-right { bottom: 8px !important; }
     .nav-map .leaflet-bottom.leaflet-right { bottom: 140px !important; }
@@ -412,7 +420,6 @@
       pointer-events: none;
     }
     .top-bar > * { pointer-events: auto; }
-    .logo-sm { font-weight: 900; font-size: 20px; color: var(--teal); }
     .top-right { display: flex; align-items: center; gap: 10px; }
     .avatar {
       width: 36px; height: 36px; border-radius: 50%;
@@ -769,7 +776,7 @@
     }
     .nav-item {
       flex: 1; background: none; border: none;
-      color: var(--muted); font-size: 11px; font-weight: 600;
+      color: var(--muted); font-size: 10px; font-weight: 600;
       cursor: pointer; padding: 8px 4px; min-height: 52px;
       font-family: inherit;
     }
@@ -802,6 +809,23 @@
     .phone.demo-active .bottom-nav,
     .phone.demo-active .nav-item { pointer-events: none; opacity: 0.45; }
     .phone.demo-active .back-btn { pointer-events: none; opacity: 0.35; }
+    .phone.demo-active .crowd-live-banner,
+    .phone.demo-active .ai-live,
+    .phone.demo-active .map-toolbar,
+    .phone.demo-active .leaflet-popup {
+      opacity: 0 !important;
+      pointer-events: none !important;
+      transition: opacity 0.2s ease;
+    }
+    .phone.demo-active #screen-2 .option-btn,
+    .phone.demo-active #screen-2 .detect-card,
+    .phone.demo-active #demo-target-share-success .btn,
+    .phone.demo-active #screen-3 .ai-panel,
+    .phone.demo-active #screen-3 .btn.btn-amber,
+    .phone.demo-active #screen-3 .urgency,
+    .phone.demo-active #screen-4 .turn-strip,
+    .phone.demo-active #screen-4 .cancel-link { display: none !important; }
+    .phone.demo-active .map-find { flex: 1 1 auto; min-height: 220px; }
 
     #demo-ui {
       position: absolute; inset: 0; z-index: 2000;
@@ -825,14 +849,25 @@
     }
     #demo-spotlight.show { opacity: 1; }
     #demo-coach {
-      position: absolute; left: 16px; right: 16px; bottom: 20px;
-      padding: 14px 16px; border-radius: 14px;
+      position: absolute; left: 12px; right: 12px;
+      padding: 12px 14px; border-radius: 14px;
       background: rgba(19,19,26,0.96); border: 1px solid rgba(0,212,170,0.45);
-      text-align: center; z-index: 2003;
-      transform: translateY(12px); opacity: 0;
-      transition: transform 0.35s ease, opacity 0.35s ease;
+      text-align: left; z-index: 2003;
+      transform: translateY(8px); opacity: 0;
+      transition: top 0.4s ease, bottom 0.4s ease, transform 0.35s ease, opacity 0.35s ease;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+      bottom: 20px; top: auto;
+      max-height: 32%;
+      overflow-y: auto;
     }
     #demo-coach.show { transform: translateY(0); opacity: 1; }
+    #demo-coach.coach-hide { opacity: 0 !important; pointer-events: none !important; }
+    #demo-coach.coach-top { top: 88px; bottom: auto; }
+    #demo-coach.coach-below-header { top: 48px; bottom: auto; }
+    #demo-coach.coach-above-sheet { bottom: calc(38% + 72px); top: auto; }
+    #demo-coach.coach-find { top: 48px; bottom: auto; }
+    #demo-coach.coach-scroll { bottom: 92px; top: auto; }
+    #demo-coach.coach-dynamic { transition: top 0.35s ease, bottom 0.35s ease, opacity 0.35s ease; }
     #demo-coach h4 { font-size: 15px; font-weight: 700; color: var(--teal); }
     #demo-coach p { font-size: 13px; color: var(--muted); margin-top: 6px; line-height: 1.45; }
     #demo-skip {
@@ -846,14 +881,149 @@
       animation: demo-pin-flash 0.9s ease-in-out infinite !important;
       box-shadow: 0 0 20px rgba(0,212,170,1) !important;
     }
-    @keyframes demo-pin-flash {
-      50% { transform: scale(1.4); }
+    .pin-red.pin-demo-pulse {
+      box-shadow: 0 0 18px rgba(255,68,68,1) !important;
     }
+    @keyframes demo-pin-flash {
+      50% { transform: scale(1.45); }
+    }
+    .pin-wrap.pin-demo-target { z-index: 900 !important; }
     .sheet-streets { max-height: 120px; overflow-y: auto; }
     .pin-amber {
       width: 14px; height: 14px; background: var(--amber);
       border: 2px solid #fff; border-radius: 50%;
       box-shadow: 0 0 10px rgba(245,158,11,0.8);
+    }
+
+    .ach-count-badge {
+      font-size: 11px; font-weight: 700; color: var(--amber);
+      background: rgba(245,158,11,0.12); padding: 3px 8px;
+      border-radius: 8px; margin-left: 6px; vertical-align: middle;
+    }
+    .achievements-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 10px; margin-bottom: 20px;
+    }
+    .achievement-card {
+      padding: 12px 8px; border-radius: 12px; text-align: center;
+      background: var(--surface); border: 1px solid var(--border);
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+    .achievement-card.unlocked {
+      border-color: rgba(0,212,170,0.45);
+      background: rgba(0,212,170,0.06);
+    }
+    .achievement-card.locked { opacity: 0.45; filter: grayscale(0.35); }
+    .achievement-card .ach-ico { font-size: 26px; line-height: 1; display: block; }
+    .achievement-card .ach-name {
+      font-size: 10px; font-weight: 700; margin-top: 6px; line-height: 1.25;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .achievement-card .ach-pts {
+      font-size: 9px; color: var(--teal); font-weight: 700; margin-top: 4px;
+    }
+    .ach-wallet-strip {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 16px; margin-bottom: 18px; cursor: pointer;
+    }
+    .ach-wallet-strip:active { opacity: 0.9; }
+    .ach-wallet-strip .aws-ico { font-size: 28px; }
+    .ach-wallet-strip b { display: block; font-size: 14px; }
+    .ach-wallet-strip span { font-size: 12px; color: var(--muted); }
+    .achievement-toast {
+      position: absolute; left: 12px; right: 12px; top: 56px; z-index: 2500;
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 14px; border-radius: 14px;
+      background: rgba(19,19,26,0.98); border: 1px solid rgba(0,212,170,0.55);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.55);
+      transform: translateY(-120%); opacity: 0;
+      transition: transform 0.45s cubic-bezier(0.34, 1.4, 0.64, 1), opacity 0.35s ease;
+      pointer-events: none;
+    }
+    .achievement-toast.show {
+      transform: translateY(0); opacity: 1;
+    }
+    .achievement-toast .ach-toast-icon { font-size: 32px; }
+    .achievement-toast b { display: block; font-size: 14px; color: var(--teal); }
+    .achievement-toast span { font-size: 12px; color: var(--muted); line-height: 1.35; }
+    .achievement-toast .ach-toast-pts {
+      display: block; font-size: 11px; color: var(--amber); font-weight: 700; margin-top: 4px;
+    }
+
+    .co2-wallet-strip {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 16px; margin-bottom: 18px; cursor: pointer;
+      background: linear-gradient(135deg, rgba(34,197,94,0.12), rgba(0,212,170,0.08));
+      border-color: rgba(34,197,94,0.35);
+    }
+    .co2-wallet-strip:active { opacity: 0.92; }
+    .co2-wallet-strip .cws-ico { font-size: 28px; }
+    .co2-wallet-strip b { display: block; font-size: 14px; }
+    .co2-wallet-strip span { font-size: 12px; color: var(--muted); }
+
+    #screen-7 .scroll-body { padding: 14px 16px 24px; }
+    .co2-hero {
+      border-radius: 1rem; padding: 20px 18px; margin-bottom: 16px;
+      background: linear-gradient(145deg, #166534, #22c55e 45%, #00D4AA);
+      color: #ecfdf5; position: relative; overflow: hidden;
+    }
+    .co2-hero::after {
+      content: ''; position: absolute; right: -20px; top: -20px;
+      width: 120px; height: 120px; border-radius: 50%;
+      background: rgba(255,255,255,0.08);
+    }
+    .co2-hero .co2-big {
+      font-size: 48px; font-weight: 900; line-height: 1; letter-spacing: -1px;
+    }
+    .co2-hero .co2-unit { font-size: 18px; font-weight: 700; opacity: 0.9; }
+    .co2-hero .co2-sub { font-size: 13px; margin-top: 8px; opacity: 0.92; line-height: 1.4; }
+    .co2-equiv {
+      display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap;
+    }
+    .co2-equiv .eq {
+      flex: 1; min-width: 100px; padding: 12px; border-radius: 12px;
+      background: var(--surface); border: 1px solid var(--border); text-align: center;
+    }
+    .co2-equiv .eq .eq-n { font-size: 18px; font-weight: 800; color: #4ade80; }
+    .co2-equiv .eq .eq-l { font-size: 10px; color: var(--muted); margin-top: 4px; line-height: 1.3; }
+    .co2-period {
+      display: flex; gap: 8px; margin-bottom: 12px;
+    }
+    .co2-period button {
+      flex: 1; padding: 8px 10px; border-radius: 10px;
+      border: 1px solid var(--border); background: var(--surface);
+      color: var(--muted); font-size: 12px; font-weight: 700;
+      cursor: pointer; font-family: inherit;
+    }
+    .co2-period button.active {
+      background: rgba(34,197,94,0.15); border-color: rgba(34,197,94,0.5); color: #4ade80;
+    }
+    .leaderboard-card { padding: 4px 0; margin-bottom: 16px; }
+    .lb-row {
+      display: grid; grid-template-columns: 32px 1fr auto;
+      gap: 8px 10px; align-items: center; padding: 12px 14px;
+      border-bottom: 1px solid var(--border); font-size: 13px;
+    }
+    .lb-row:last-child { border-bottom: none; }
+    .lb-row.you {
+      background: rgba(0,212,170,0.08);
+      border-left: 3px solid var(--teal);
+    }
+    .lb-rank {
+      width: 28px; height: 28px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 800; background: rgba(255,255,255,0.06);
+      color: var(--muted);
+    }
+    .lb-row:nth-child(1) .lb-rank { background: rgba(245,158,11,0.2); color: var(--amber); }
+    .lb-row:nth-child(2) .lb-rank { background: rgba(192,192,192,0.15); color: #d4d4d4; }
+    .lb-row:nth-child(3) .lb-rank { background: rgba(180,120,80,0.2); color: #d4a574; }
+    .lb-hood b { display: block; font-weight: 700; }
+    .lb-hood span { font-size: 11px; color: var(--muted); }
+    .lb-kg { text-align: right; font-weight: 800; color: #4ade80; font-size: 14px; }
+    .lb-kg small { display: block; font-size: 10px; font-weight: 600; color: var(--muted); }
+    .co2-foot {
+      font-size: 11px; color: var(--muted); line-height: 1.45; padding: 0 4px 8px;
     }
   </style>
 </head>
@@ -864,7 +1034,7 @@
 
         <!-- SCREEN 0: Splash -->
         <section id="screen-0" class="screen active">
-          <p class="splash-logo">Ae!</p>
+          <img src="Ae_mini_ikona.png" alt="Ae!" class="splash-logo app-icon" width="168" height="168" />
           <p class="splash-tag">Split dišpet. Zero concrete.</p>
           <p class="splash-sub">Crowdsourced parking for Split's neighborhoods.</p>
           <div class="splash-dots"><span></span><span></span><span></span></div>
@@ -875,7 +1045,7 @@
           <div class="map-box has-sheet">
             <div id="map-1" class="leaflet-map"></div>
             <header class="top-bar">
-              <span class="logo-sm">Ae!</span>
+              <img src="Ae_mini_ikona_navbar.png" alt="Ae!" class="logo-sm app-icon" width="32" height="32" />
               <div class="top-right">
                 <button type="button" id="demo-start-btn" class="demo-btn-top" onclick="App.startDemo()">▶ Demo</button>
                 <button type="button" class="avatar" id="profile-btn" onclick="App.openProfile()" aria-label="Profil">LK</button>
@@ -886,9 +1056,8 @@
             <div id="crowd-live-banner" class="crowd-live-banner" onclick="App.toggleSheet()" role="status">
               <span class="live-dot" aria-hidden="true"></span><span id="crowd-banner-text">4 live crowds</span>
             </div>
-            <div id="nearby-chip" class="nearby-chip" role="status"></div>
             <div class="map-toolbar" role="toolbar" aria-label="Map tools">
-              <button type="button" id="btn-my-location" title="My location — Split Tech Park" onclick="App.centerOnUser()">📍</button>
+              <button type="button" id="btn-my-location" title="My location — Centar, Split" onclick="App.centerOnUser()">📍</button>
               <span class="tb-sep" aria-hidden="true"></span>
               <button type="button" id="btn-add-spot" title="Add Misto" onclick="App.toggleAddSpotMode()">➕</button>
             </div>
@@ -923,7 +1092,7 @@
           <div class="scroll-body" style="position:relative">
             <div class="card location-card">
               <span>📍</span>
-              <p class="addr">Dračevac 3D, Split Tech Park</p>
+              <p class="addr">Marmontova 12, Centar</p>
               <p class="sub">Your current parking spot</p>
               <div class="thumb-map"><div id="map-2" class="leaflet-map"></div></div>
             </div>
@@ -958,27 +1127,27 @@
             <span class="screen-title">Find Parking</span>
           </header>
           <div class="notify-banner" id="demo-target-find-banner">
-            <p>🔔 New spot just opened 180m away!</p>
-            <p class="sub">Matice Hrvatske 14 · just now</p>
-            <button type="button" class="btn-white" onclick="App.go(4)">Claim it →</button>
+            <p>🔔 Free spot nearby</p>
+            <p class="sub" id="find-banner-sub">Marmontova 8 · just now</p>
+            <button type="button" class="btn-white" onclick="App.claimSpot()">Claim it →</button>
           </div>
           <div class="map-find"><div id="map-3" class="leaflet-map"></div></div>
           <div class="ai-panel">
             <p class="cap">AI Prediction — Split</p>
             <div class="prob-row">
-              <div class="prob-head"><span>Spinut</span><span style="color:var(--teal)">78% · 1 available</span></div>
-              <div class="prob-bar"><div class="prob-fill" style="width:78%;background:var(--teal)"></div></div>
+              <div class="prob-head"><span>Centar</span><span style="color:var(--teal)">82% · 4 available</span></div>
+              <div class="prob-bar"><div class="prob-fill" style="width:82%;background:var(--teal)"></div></div>
             </div>
             <div class="prob-row">
-              <div class="prob-head"><span>Centar</span><span style="color:var(--amber)">34%</span></div>
-              <div class="prob-bar"><div class="prob-fill" style="width:34%;background:var(--amber)"></div></div>
+              <div class="prob-head"><span>Spinut</span><span style="color:var(--amber)">42%</span></div>
+              <div class="prob-bar"><div class="prob-fill" style="width:42%;background:var(--amber)"></div></div>
             </div>
             <div class="prob-row">
               <div class="prob-head"><span>Firule</span><span style="color:var(--red)">11%</span></div>
               <div class="prob-bar"><div class="prob-fill" style="width:11%;background:var(--red)"></div></div>
             </div>
             <p style="font-size:11px;color:var(--muted);margin:10px 0 14px">Based on 2,847 trips analyzed in this area</p>
-            <button type="button" class="btn btn-amber" onclick="App.go(4)">CLAIM THIS MISTO — 5 Gušti</button>
+            <button type="button" class="btn btn-amber" onclick="App.claimSpot()">CLAIM THIS MISTO — 5 Gušti</button>
             <p class="urgency"><span class="dot"></span>2 people are looking at this spot</p>
           </div>
         </section>
@@ -993,7 +1162,7 @@
             <div class="card timer-card" id="demo-target-nav-timer">
               <p class="lbl">🎯 Reserved! Arriving in:</p>
               <p class="timer-big" id="nav-timer">1:47</p>
-              <p style="font-weight:600;font-size:14px">Matice Hrvatske 14, Spinut</p>
+              <p style="font-weight:600;font-size:14px" id="nav-dest-label">Marmontova 8, Centar</p>
             </div>
             <div class="card turn-strip">
               <span class="arrow">↑</span>
@@ -1009,7 +1178,7 @@
             <h2 style="font-size:22px;font-weight:700;margin-top:16px">You parked! 🎉</h2>
             <p style="color:var(--muted);margin-top:8px;font-size:15px">Saved ~35 minutes of circling</p>
             <div class="stats-row">
-              <div class="stat">CO₂<br><b>🟢 -0.4kg</b></div>
+              <div class="stat">CO₂<br><b id="park-success-co2">🟢 -0.4kg</b></div>
               <div class="stat">Time<br><b>🟢 -35min</b></div>
               <div class="stat">Cost<br><b>🟢 -5 Gušti</b></div>
             </div>
@@ -1030,6 +1199,20 @@
               <p class="wallet-meta">13 Gušti to next reward</p>
               <p class="wallet-meta">Earned this week: +28 Gušti</p>
             </div>
+            <div class="card co2-wallet-strip" id="co2-wallet-strip" onclick="App.go(7)" role="button" tabindex="0">
+              <span class="cws-ico">🌱</span>
+              <div>
+                <b id="co2-wallet-title">12.4 kg CO₂ saved</b>
+                <span id="co2-wallet-sub">Neighborhood leaderboard · tap to view</span>
+              </div>
+            </div>
+            <div class="card ach-wallet-strip" id="ach-wallet-strip" onclick="App.go(6)" role="button" tabindex="0">
+              <span class="aws-ico">🏅</span>
+              <div>
+                <b id="ach-wallet-title">Achievements</b>
+                <span id="ach-wallet-sub">Unlock badges · earn bonus Gušti</span>
+              </div>
+            </div>
             <p class="section-title">Recent Activity</p>
             <div class="card" style="padding:4px 14px;margin-bottom:18px">
               <div class="activity-row">
@@ -1046,20 +1229,20 @@
               </div>
             </div>
             <p class="section-title">Spend your Gušti</p>
-            <div class="rewards-scroll">
+            <div id="demo-target-wallet-rewards" class="rewards-scroll">
               <div class="card reward-card">
                 <span style="font-size:28px">☕</span>
                 <h4>Free Coffee</h4>
                 <p>Kafić Zlatna Vrata · 0.3km</p>
                 <span class="reward-badge">15 Gušti</span>
-                <button type="button" class="btn btn-outline" onclick="App.openQR('Kafić Zlatna Vrata')">Get QR Code →</button>
+                <button type="button" id="demo-target-qr-btn" class="btn btn-outline" onclick="App.openQR('Kafić Zlatna Vrata')">Get QR Code →</button>
               </div>
               <div class="card reward-card">
                 <span style="font-size:28px">🚌</span>
                 <h4>Promet Bus Ticket</h4>
                 <p>1 ride, any line</p>
                 <span class="reward-badge">20 Gušti</span>
-                <button type="button" class="btn btn-outline">Activate →</button>
+                <button type="button" class="btn btn-outline" onclick="App.openQR('Promet Split', 20, true)">Activate →</button>
               </div>
               <div class="card reward-card">
                 <span style="font-size:28px">🍕</span>
@@ -1087,14 +1270,14 @@
                 <h4>Nextbike Day Pass</h4>
                 <p>Unlimited 24h · city-wide</p>
                 <span class="reward-badge">30 Gušti</span>
-                <button type="button" class="btn btn-outline">Activate →</button>
+                <button type="button" class="btn btn-outline" onclick="App.openQR('Nextbike Split', 30, true)">Activate →</button>
               </div>
               <div class="card reward-card">
                 <span style="font-size:28px">🅿️</span>
                 <h4>1h Zone 3 Parking</h4>
                 <p>Split municipal · digital voucher</p>
                 <span class="reward-badge">18 Gušti</span>
-                <button type="button" class="btn btn-outline">Activate →</button>
+                <button type="button" class="btn btn-outline" onclick="App.openQR('Split Parking Zone 3', 18, true)">Activate →</button>
               </div>
               <div class="card reward-card">
                 <span style="font-size:28px">🍦</span>
@@ -1129,7 +1312,7 @@
                 <h4>Catamaran -20%</h4>
                 <p>Split → Supetar · Jadrolinija</p>
                 <span class="reward-badge">45 Gušti</span>
-                <button type="button" class="btn btn-outline">Activate →</button>
+                <button type="button" class="btn btn-outline" onclick="App.openQR('Jadrolinija', 45, true)">Activate →</button>
               </div>
               <div class="card reward-card">
                 <span style="font-size:28px">🧴</span>
@@ -1143,12 +1326,46 @@
                 <h4>Beach Umbrella 2h</h4>
                 <p>Bačvice · weekend partner</p>
                 <span class="reward-badge">24 Gušti</span>
-                <button type="button" class="btn btn-outline">Activate →</button>
+                <button type="button" class="btn btn-outline" onclick="App.openQR('Bačvice Beach', 24, true)">Activate →</button>
               </div>
             </div>
           </div>
         </section>
 
+        <!-- SCREEN 7: Impact / CO₂ -->
+        <section id="screen-7" class="screen">
+          <header class="screen-header">
+            <span class="screen-title" style="margin-left:4px">Impact</span>
+          </header>
+          <div class="scroll-body">
+            <div class="co2-hero" id="demo-target-co2-hero">
+              <p class="co2-unit">CO₂ avoided</p>
+              <p class="co2-big" id="co2-total">12.4</p>
+              <p class="co2-sub" id="co2-hero-sub">Less circling in Split · your kvart: <strong>Centar</strong></p>
+            </div>
+            <div class="co2-equiv" id="demo-target-co2-equiv">
+              <div class="eq">
+                <p class="eq-n" id="co2-eq-km">18</p>
+                <p class="eq-l">km not driven</p>
+              </div>
+              <div class="eq">
+                <p class="eq-n" id="co2-eq-min">52</p>
+                <p class="eq-l">min saved</p>
+              </div>
+              <div class="eq">
+                <p class="eq-n" id="co2-eq-trees">2</p>
+                <p class="eq-l">trees · 1 year</p>
+              </div>
+            </div>
+            <p class="section-title">Neighborhood leaderboard</p>
+            <div class="co2-period" role="tablist">
+              <button type="button" id="co2-tab-week" class="active" onclick="App.setCo2Period('week')">This week</button>
+              <button type="button" id="co2-tab-all" onclick="App.setCo2Period('all')">All time</button>
+            </div>
+            <div class="card leaderboard-card" id="demo-target-co2-board"></div>
+            <p class="co2-foot" id="co2-footnote">Rankings combine shared Misto, faster parking, and fewer circling trips. Updated live across Split.</p>
+          </div>
+        </section>
 
         <!-- SCREEN 6: Profile -->
         <section id="screen-6" class="screen">
@@ -1182,11 +1399,13 @@
               </div>
               <div class="profile-stats">
                 <div class="profile-stat"><b id="profile-stat-pts">47</b><span>Gušti</span></div>
-                <div class="profile-stat"><b>12</b><span>Shared</span></div>
-                <div class="profile-stat"><b>3</b><span>Reports</span></div>
+                <div class="profile-stat"><b id="profile-stat-shares">12</b><span>Shared</span></div>
+                <div class="profile-stat"><b id="profile-stat-reports">3</b><span>Reports</span></div>
               </div>
+              <p class="section-title">Achievements <span class="ach-count-badge" id="ach-count-badge">0/12</span></p>
+              <div id="achievements-grid" class="achievements-grid"></div>
               <div class="card profile-section" style="padding:4px 16px">
-                <div class="profile-row"><span>Home zone</span><span class="lbl">Split Tech Park</span></div>
+                <div class="profile-row"><span>Home zone</span><span class="lbl">Centar, Split</span></div>
                 <div class="profile-row"><span>Vehicle</span><span class="lbl">Peugeot 308</span></div>
                 <div class="profile-row"><span>Member since</span><span class="lbl">Mar 2026</span></div>
               </div>
@@ -1207,11 +1426,21 @@
 
       </div>
 
+        <div id="achievement-toast" class="achievement-toast" aria-live="polite">
+          <span class="ach-toast-icon" id="ach-toast-icon">🏅</span>
+          <div>
+            <b id="ach-toast-title">Achievement unlocked</b>
+            <span id="ach-toast-desc"></span>
+            <span class="ach-toast-pts" id="ach-toast-pts"></span>
+          </div>
+        </div>
+
       <nav class="bottom-nav" id="bottom-nav">
         <button type="button" class="nav-item" data-nav="1" onclick="App.go(1)"><span class="ico">🗺</span>Map</button>
         <button type="button" class="nav-item" data-nav="2" onclick="App.go(2)"><span class="ico">🚗</span>Leaving</button>
         <button type="button" class="nav-item" data-nav="3" onclick="App.go(3)"><span class="ico">🔍</span>Find</button>
         <button type="button" class="nav-item" data-nav="5" onclick="App.go(5)"><span class="ico">💰</span>Gušti</button>
+        <button type="button" class="nav-item" data-nav="7" onclick="App.go(7)"><span class="ico">🌱</span>Impact</button>
       </nav>
     </div>
   </div>
@@ -1239,7 +1468,7 @@
 
   <div id="qr-modal">
     <div class="modal-box">
-      <p style="font-weight:700;font-size:16px">Show this to the cashier</p>
+      <p id="qr-modal-title" style="font-weight:700;font-size:16px">Show this to the cashier</p>
       <p id="qr-merchant" style="color:var(--muted);font-size:13px;margin-top:6px"></p>
       <div id="qr-wrap"></div>
       <p class="qr-brand">◉ Ae! Gušti Pay</p>
@@ -1287,8 +1516,17 @@
   }
 
   const SPLIT_CENTER = [43.5105, 16.455];
+  const USER_CENTAR = [43.5088, 16.4415];
+  const USER_PARKED = [43.5089, 16.4412];
   const TECH_PARK = [43.52553, 16.49757];
   const POLJUD = [43.518611, 16.469722];
+
+  function haversineM(a, b) {
+    const R = 6371000, rad = x => x * Math.PI / 180;
+    const dLat = rad(b[0]-a[0]), dLng = rad(b[1]-a[1]);
+    const h = Math.sin(dLat/2)**2 + Math.cos(rad(a[0]))*Math.cos(rad(b[0]))*Math.sin(dLng/2)**2;
+    return 2 * R * Math.asin(Math.sqrt(h));
+  }
 
   function makeRng(seed) {
     let s = seed >>> 0;
@@ -1302,7 +1540,7 @@
 
   function buildDemoSpots() {
     const zones = [
-      { lat: 43.5080, lng: 16.4402, spread: 0.0038, streets: ['Marmontova', 'Narodni trg', 'Dioklecijanova', 'Obala'] },
+      { lat: 43.5088, lng: 16.4415, spread: 0.0042, streets: ['Marmontova', 'Narodni trg', 'Dioklecijanova', 'Obala', 'Kraj Sv. Duje'], perZone: 16 },
       { lat: 43.5140, lng: 16.4820, spread: 0.0035, streets: ['Domovinskog rata', 'Matice Hrvatske', 'Šoltanska ul.'] },
       { lat: 43.5185, lng: 16.4695, spread: 0.0032, streets: ['Vukovarska', 'Ulica Firula', 'Šetalište Firula'] },
       { lat: 43.5055, lng: 16.4425, spread: 0.0030, streets: ['Riva', 'Voćarska', 'Slovenska ul.'] },
@@ -1315,9 +1553,10 @@
     const spots = [];
     const placed = [];
     const minSep2 = 0.00032 * 0.00032;
-    const perZone = 10;
+    const defaultPerZone = 10;
 
     zones.forEach(zone => {
+      const perZone = zone.perZone || defaultPerZone;
       let placedHere = 0;
       let attempts = 0;
       while (placedHere < perZone && attempts < perZone * 40) {
@@ -1336,7 +1575,8 @@
         placed.push([lat, lng]);
         placedHere++;
         const street = zone.streets[Math.floor(rand() * zone.streets.length)];
-        const available = rand() < 0.065;
+        const nearCentar = haversineM([lat, lng], USER_CENTAR) < 520;
+        const available = nearCentar ? rand() < 0.18 : rand() < 0.065;
         const mins = 10 + Math.floor(rand() * 165);
         spots.push({
           lat: Math.round(lat * 1e6) / 1e6,
@@ -1350,26 +1590,35 @@
     });
 
     spots.push({
-      lat: TECH_PARK[0] + 0.00012,
-      lng: TECH_PARK[1] - 0.0001,
-      street: 'Dračevac',
-      num: '3D',
+      lat: USER_PARKED[0],
+      lng: USER_PARKED[1],
+      street: 'Marmontova',
+      num: '12',
       available: false,
-      detail: 'Your spot · Split Tech Park'
+      detail: 'Your spot · Centar'
     });
+    [
+      { lat: 43.5091, lng: 16.4409, street: 'Marmontova', num: '8', primaryFree: true },
+      { lat: 43.5083, lng: 16.4426, street: 'Narodni trg', num: '5' },
+      { lat: 43.5096, lng: 16.4395, street: 'Dioklecijanova', num: '11' },
+      { lat: 43.5079, lng: 16.4418, street: 'Obala', num: '3' }
+    ].forEach(s => spots.push({
+      lat: s.lat, lng: s.lng, street: s.street, num: s.num,
+      available: true, detail: 'Available · 0 claims', seedCentar: true, primaryFree: !!s.primaryFree
+    }));
     spots.push({
       lat: 43.5140,
       lng: 16.4818,
       street: 'Matice Hrvatske',
       num: '14',
       available: true,
-      detail: 'Available · 0 claims'
+      detail: 'Available · Spinut'
     });
     return spots;
   }
 
   const SPOTS = buildDemoSpots();
-  const USER_SPOT = { street: 'Dračevac', num: '3D', label: 'Split Tech Park' };
+  const USER_SPOT = { street: 'Marmontova', num: '12', label: 'Centar, Split' };
 
   function loadCommunitySpots() {
     try {
@@ -1395,17 +1644,27 @@
       ));
     } catch (e) {}
   }
-  function haversineM(a, b) {
-    const R = 6371000, rad = x => x * Math.PI / 180;
-    const dLat = rad(b[0]-a[0]), dLng = rad(b[1]-a[1]);
-    const h = Math.sin(dLat/2)**2 + Math.cos(rad(a[0]))*Math.cos(rad(b[0]))*Math.sin(dLng/2)**2;
-    return 2 * R * Math.asin(Math.sqrt(h));
-  }
   loadCommunitySpots();
-  const getFreeIdx = () => SPOTS.findIndex(s => s.available && !s.reported);
+  const getFreeIdx = (near) => {
+    const ok = (s) => s.available && !s.reported;
+    let i = SPOTS.findIndex(s => s.primaryFree && ok(s));
+    if (i >= 0) return i;
+    if (near) {
+      const ref = near === true ? USER_CENTAR : near;
+      const ranked = SPOTS.map((s, idx) => ({ s, idx })).filter(x => ok(x.s));
+      if (!ranked.length) return -1;
+      ranked.sort((a, b) =>
+        haversineM(ref, [a.s.lat, a.s.lng]) - haversineM(ref, [b.s.lat, b.s.lng])
+      );
+      return ranked[0].idx;
+    }
+    i = SPOTS.findIndex(s => s.seedCentar && ok(s));
+    if (i >= 0) return i;
+    return SPOTS.findIndex(s => ok(s));
+  };
   const CENTER = SPLIT_CENTER.slice();
-  const USER_DEFAULT = TECH_PARK.slice();
-  const USER_DEFAULT_LABEL = 'Split Tech Park';
+  const USER_DEFAULT = USER_CENTAR.slice();
+  const USER_DEFAULT_LABEL = 'Centar · Narodni trg';
   const SEEKER = USER_DEFAULT;
   const TILE = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
   const coords = i => [SPOTS[i].lat, SPOTS[i].lng];
@@ -1434,6 +1693,46 @@
       level: 'med', endsInMin: 28
     }
   ];
+
+  const ACHIEVEMENTS = [
+    { id: 'first_share', icon: '🚗', title: 'First Misto', desc: 'Share your first spot', bonus: 5,
+      test: s => s.shares >= 1 },
+    { id: 'sharer_5', icon: '🌟', title: 'Street Legend', desc: 'Share 5 Misto', bonus: 10,
+      test: s => s.shares >= 5 },
+    { id: 'sharer_10', icon: '👑', title: 'Kvart Hero', desc: 'Share 10 Misto', bonus: 20,
+      test: s => s.shares >= 10 },
+    { id: 'first_claim', icon: '🔍', title: 'Spot Hunter', desc: 'Reserve a Misto', bonus: 5,
+      test: s => s.claims >= 1 },
+    { id: 'parked', icon: '🅿️', title: 'Parked!', desc: 'Complete a navigation', bonus: 8,
+      test: s => s.parked >= 1 },
+    { id: 'first_report', icon: '🚶', title: 'Digitalni Redar', desc: 'Report wrong info', bonus: 5,
+      test: s => s.reports >= 1 },
+    { id: 'redar_3', icon: '🛡️', title: 'Neighborhood Watch', desc: '3 reports filed', bonus: 12,
+      test: s => s.reports >= 3 },
+    { id: 'community', icon: '➕', title: 'Map Builder', desc: 'Add a community Misto', bonus: 8,
+      test: s => s.community >= 1 },
+    { id: 'crowd_scout', icon: '🎪', title: 'Crowd Scout', desc: 'Check a live crowd event', bonus: 5,
+      test: s => s.crowds >= 1 },
+    { id: 'gustin_60', icon: '💰', title: 'Gušti Stack', desc: 'Reach 60 Gušti', bonus: 0,
+      test: (s, pts) => pts >= 60 },
+    { id: 'redeem', icon: '☕', title: 'Local Supporter', desc: 'Redeem a partner reward', bonus: 5,
+      test: s => s.redeems >= 1 },
+    { id: 'demo_grad', icon: '🎬', title: 'Tour Complete', desc: 'Finish the guided demo', bonus: 15,
+      test: s => s.demoDone >= 1 }
+  ];
+
+  const USER_HOOD = 'Centar';
+  const CO2_HOODS = [
+    { hood: 'Spinut', members: 214, week: 12.4, all: 48.2 },
+    { hood: 'Centar', members: 388, week: 10.8, all: 41.6, you: true },
+    { hood: 'Firule', members: 176, week: 9.6, all: 36.9 },
+    { hood: 'Trstenik', members: 142, week: 8.2, all: 31.4 },
+    { hood: 'Varoš', members: 165, week: 7.1, all: 28.1 },
+    { hood: 'Kman', members: 98, week: 0, all: 0 },
+    { hood: 'Bol', members: 89, week: 5.4, all: 18.7 },
+    { hood: 'Meje', members: 72, week: 4.8, all: 15.3 }
+  ];
+
   const delay = ms => new Promise(r => setTimeout(r, ms));
 
   const App = {
@@ -1451,6 +1750,9 @@
     demoActive: false,
     demoAborted: false,
     demoTimers: [],
+    demoHighlightIdx: null,
+    demoHighlightMapId: null,
+    claimedSpotIdx: null,
     userLocation: null,
     userLocLayer: null,
     nearbyIndices: null,
@@ -1464,6 +1766,11 @@
     crowdMarkers: [],
     crowdTicker: null,
     spotCluster: null,
+    stats: null,
+    unlockedAchievements: {},
+    achBonusEarned: 0,
+    achToastTimer: null,
+    co2Period: 'week',
 
     go(n) {
       if (this.demoActive && n === 0) return;
@@ -1478,6 +1785,7 @@
       if (n === 1) {
         this.setDefaultUserLocation();
         this.ensureMap('map-1', { mode: 'home' });
+        setTimeout(() => this.focusMapOnUser(false), 180);
         this.updateHomeSheet();
         this.startCrowdTicker();
         this.renderCrowds('map-1');
@@ -1486,15 +1794,229 @@
         this.resetShare();
         this.ensureMap('map-2', { mode: 'highlight' });
       }
-      if (n === 3) this.ensureMap('map-3', { mode: 'find' });
-      if (n === 4) this.startNav();
-      if (n === 5) this.updatePoints();
+      if (n === 3) { this.syncFindLabels(); this.ensureMap('map-3', { mode: 'find' }); }
+      if (n === 4) {
+        if (this.claimedSpotIdx == null) this.claimedSpotIdx = getFreeIdx(true);
+        this.syncFindLabels();
+        this.bumpStat('claims', 1);
+        this.startNav();
+      }
+      if (n === 5) { this.updatePoints(); this.renderAchievements(); this.updateCo2WalletStrip(); }
       if (n === 6) this.renderProfile();
+      if (n === 7) this.renderImpact();
+    },
+
+
+    computeUserCo2Kg() {
+      if (!this.stats) this.loadAchievements();
+      const s = this.stats;
+      const kg = (s.co2Kg || 0) + s.shares * 0.38 + s.parked * 0.42 + s.claims * 0.22;
+      return Math.round(kg * 10) / 10;
+    },
+
+    addCo2(kg) {
+      if (!this.stats) this.loadAchievements();
+      this.stats.co2Kg = Math.round(((this.stats.co2Kg || 0) + kg) * 100) / 100;
+      this.saveAchievements();
+      this.updateCo2WalletStrip();
+      if (this.screen === 7) this.renderImpact();
+    },
+
+    getLeaderboard(period) {
+      const userKg = this.computeUserCo2Kg();
+      const hoodBase = period === 'week' ? 2.8 : 14.2;
+      return CO2_HOODS.map(h => {
+        let kg = period === 'week' ? h.week : h.all;
+        if (h.you) kg = hoodBase + userKg;
+        return { hood: h.hood, members: h.members, kg: Math.round(kg * 10) / 10, you: !!h.you };
+      }).sort((a, b) => b.kg - a.kg);
+    },
+
+    setCo2Period(period) {
+      this.co2Period = period;
+      document.getElementById('co2-tab-week')?.classList.toggle('active', period === 'week');
+      document.getElementById('co2-tab-all')?.classList.toggle('active', period === 'all');
+      this.renderImpact();
+    },
+
+    updateCo2WalletStrip() {
+      const kg = this.computeUserCo2Kg();
+      const title = document.getElementById('co2-wallet-title');
+      const sub = document.getElementById('co2-wallet-sub');
+      if (title) title.textContent = kg + ' kg CO₂ saved';
+      if (sub) {
+        const board = this.getLeaderboard('week');
+        const rank = board.findIndex(r => r.you) + 1;
+        sub.textContent = rank > 0
+          ? ('#' + rank + ' in ' + USER_HOOD + ' this week · tap leaderboard')
+          : 'Neighborhood leaderboard · tap to view';
+      }
+    },
+
+    renderImpact() {
+      if (!this.stats) this.loadAchievements();
+      const kg = this.computeUserCo2Kg();
+      const set = (id, t) => { const n = document.getElementById(id); if (n) n.textContent = t; };
+      set('co2-total', String(kg));
+      set('co2-hero-sub', 'Less circling in Split · your kvart: ' + USER_HOOD);
+      set('co2-eq-km', String(Math.round(kg * 4.2)));
+      set('co2-eq-min', String(Math.round(kg * 35)));
+      set('co2-eq-trees', String(Math.max(1, Math.round(kg / 6))));
+      const board = this.getLeaderboard(this.co2Period || 'week');
+      const list = document.getElementById('demo-target-co2-board');
+      if (list) {
+        list.innerHTML = board.map((row, i) => {
+          const rank = i + 1;
+          const youTag = row.you ? ' · you' : '';
+          return '<div class="lb-row' + (row.you ? ' you' : '') + '">' +
+            '<span class="lb-rank">' + rank + '</span>' +
+            '<div class="lb-hood"><b>' + row.hood + youTag + '</b><span>' + row.members + ' neighbors active</span></div>' +
+            '<span class="lb-kg">' + row.kg + ' kg<small>CO₂ avoided</small></span>' +
+            '</div>';
+        }).join('');
+      }
+      const youRow = board.find(r => r.you);
+      const rank = board.findIndex(r => r.you) + 1;
+      set('co2-footnote', rank > 0
+        ? ('You rank #' + rank + ' in ' + USER_HOOD + ' for ' + (this.co2Period === 'week' ? 'this week' : 'all time') +
+          ' · ' + (youRow ? youRow.kg : kg) + ' kg from smarter parking.')
+        : 'Rankings combine shared Misto, faster parking, and fewer circling trips.');
+      this.updateCo2WalletStrip();
+    },
+
+    async animateCo2Count(from, to, ms) {
+      const el = document.getElementById('co2-total');
+      if (!el) return;
+      ms = ms || 1400;
+      const t0 = performance.now();
+      await new Promise(resolve => {
+        const tick = now => {
+          const p = Math.min(1, (now - t0) / ms);
+          const v = from + (to - from) * (1 - Math.pow(1 - p, 2));
+          el.textContent = String(Math.round(v * 10) / 10);
+          if (p < 1) requestAnimationFrame(tick);
+          else { el.textContent = String(Math.round(to * 10) / 10); resolve(); }
+        };
+        requestAnimationFrame(tick);
+      });
+    },
+
+    loadAchievements() {
+      const defaultStats = { shares: 11, claims: 4, reports: 3, community: 0, parked: 2, redeems: 0, crowds: 0, demoDone: 0, co2Kg: 4.6 };
+      try {
+        const rawS = localStorage.getItem('ae_stats');
+        this.stats = rawS ? Object.assign({}, defaultStats, JSON.parse(rawS)) : Object.assign({}, defaultStats);
+        const rawA = localStorage.getItem('ae_achievements');
+        this.unlockedAchievements = rawA ? JSON.parse(rawA) : {};
+        this.achBonusEarned = parseInt(localStorage.getItem('ae_ach_bonus') || '0', 10) || 0;
+      } catch (e) {
+        this.stats = Object.assign({}, defaultStats);
+        this.unlockedAchievements = {};
+        this.achBonusEarned = 0;
+      }
+      ACHIEVEMENTS.forEach(a => {
+        if (a.test(this.stats, this.points) && !this.unlockedAchievements[a.id]) {
+          this.unlockedAchievements[a.id] = Date.now();
+        }
+      });
+      this.saveAchievements();
+    },
+
+    saveAchievements() {
+      try {
+        localStorage.setItem('ae_stats', JSON.stringify(this.stats));
+        localStorage.setItem('ae_achievements', JSON.stringify(this.unlockedAchievements));
+        localStorage.setItem('ae_ach_bonus', String(this.achBonusEarned || 0));
+      } catch (e) {}
+    },
+
+    bumpStat(key, n) {
+      if (!this.stats) this.loadAchievements();
+      this.stats[key] = (this.stats[key] || 0) + (n || 1);
+      this.saveAchievements();
+      this.checkAchievements();
+      this.renderAchievements();
+      if (key === 'shares' || key === 'parked' || key === 'claims' || key === 'co2Kg') {
+        this.updateCo2WalletStrip();
+        if (this.screen === 7) this.renderImpact();
+      }
+    },
+
+    checkAchievements() {
+      if (!this.stats) return;
+      ACHIEVEMENTS.forEach(a => {
+        if (!this.unlockedAchievements[a.id] && a.test(this.stats, this.points)) {
+          this.unlockAchievement(a);
+        }
+      });
+    },
+
+    unlockAchievement(a) {
+      if (this.unlockedAchievements[a.id]) return;
+      this.unlockedAchievements[a.id] = Date.now();
+      if (a.bonus > 0) {
+        this.points += a.bonus;
+        this.achBonusEarned = (this.achBonusEarned || 0) + a.bonus;
+        this.updatePoints();
+      }
+      this.saveAchievements();
+      this.renderAchievements();
+      this.showAchievementToast(a);
+      playDing();
+    },
+
+    showAchievementToast(a) {
+      const toast = document.getElementById('achievement-toast');
+      if (!toast) return;
+      document.getElementById('ach-toast-icon').textContent = a.icon;
+      document.getElementById('ach-toast-title').textContent = a.title;
+      document.getElementById('ach-toast-desc').textContent = a.desc;
+      const ptsEl = document.getElementById('ach-toast-pts');
+      ptsEl.textContent = a.bonus > 0 ? ('+' + a.bonus + ' bonus Gušti') : 'Badge unlocked';
+      toast.classList.add('show');
+      if (this.achToastTimer) clearTimeout(this.achToastTimer);
+      this.achToastTimer = setTimeout(() => toast.classList.remove('show'), 3200);
+    },
+
+    renderAchievements() {
+      if (!this.stats) this.loadAchievements();
+      const grid = document.getElementById('achievements-grid');
+      const total = ACHIEVEMENTS.length;
+      const unlocked = ACHIEVEMENTS.filter(a => this.unlockedAchievements[a.id]).length;
+      const badge = document.getElementById('ach-count-badge');
+      if (badge) badge.textContent = unlocked + '/' + total;
+      const wTitle = document.getElementById('ach-wallet-title');
+      const wSub = document.getElementById('ach-wallet-sub');
+      if (wTitle) wTitle.textContent = unlocked + ' of ' + total + ' unlocked';
+      if (wSub) {
+        const bonus = this.achBonusEarned || 0;
+        wSub.textContent = bonus > 0
+          ? ('+' + bonus + ' bonus Gušti from badges · tap to view')
+          : 'Unlock badges · earn bonus Gušti';
+      }
+      const sh = document.getElementById('profile-stat-shares');
+      const rep = document.getElementById('profile-stat-reports');
+      const pts = document.getElementById('profile-stat-pts');
+      if (sh) sh.textContent = this.stats.shares;
+      if (rep) rep.textContent = this.stats.reports;
+      if (pts) pts.textContent = this.points;
+      if (!grid) return;
+      grid.innerHTML = ACHIEVEMENTS.map(a => {
+        const on = !!this.unlockedAchievements[a.id];
+        return '<div class="achievement-card ' + (on ? 'unlocked' : 'locked') + '" title="' + a.desc + '">' +
+          '<span class="ach-ico">' + a.icon + '</span>' +
+          '<span class="ach-name">' + a.title + '</span>' +
+          (a.bonus > 0 ? '<span class="ach-pts">+' + a.bonus + '</span>' : '<span class="ach-pts">Badge</span>') +
+          '</div>';
+      }).join('');
     },
 
     updatePoints() {
       document.getElementById('pts-top').textContent = this.points + ' Gušti';
       document.getElementById('wallet-bal').textContent = this.points;
+      if (this.stats) this.checkAchievements();
+      const pts = document.getElementById('profile-stat-pts');
+      if (pts) pts.textContent = this.points;
     },
 
 
@@ -1586,6 +2108,7 @@
       const map = this.maps['map-1'];
       if (!ev || !map) return;
       document.getElementById('map-sheet').classList.remove('collapsed');
+      this.bumpStat('crowds', 1);
       map.flyTo([ev.lat, ev.lng], 16, { animate: true, duration: 0.9 });
       setTimeout(() => {
         const active = CROWD_EVENTS.filter(c => c.endsInMin > 0);
@@ -1610,14 +2133,68 @@
       this.userLocation = USER_DEFAULT.slice();
       this.userLocationAcc = 55;
       this.userLocationIsDefault = true;
+      this._userLocLabel = USER_DEFAULT_LABEL;
       this.computeNearbyIndices();
       if (this.maps['map-1']) {
         this.updateUserOnMap('map-1');
-        this.updateNearbyChip();
       }
     },
 
-    getFreeSpotIdx() { return getFreeIdx(); },
+    setDemoUserLocation(lat, lng, opts) {
+      opts = opts || {};
+      this.userLocation = [lat, lng];
+      this.userLocationAcc = opts.acc || 45;
+      this.userLocationIsDefault = false;
+      this._userLocLabel = opts.label || 'You';
+      this.computeNearbyIndices(opts.radius || 500);
+      if (this.maps['map-1']) {
+        this.updateUserOnMap('map-1');
+      }
+    },
+
+    userLocPopupHtml() {
+      const sub = this.userLocationIsDefault
+        ? USER_DEFAULT_LABEL
+        : (this._userLocLabel || 'You');
+      return '<strong>You are here</strong><br><span style="color:#6B7280;font-size:12px">' + sub + '</span>';
+    },
+
+    getFreeSpotIdx() { return this.claimSpotIdx(); },
+
+    claimSpotIdx() {
+      const i = this.claimedSpotIdx;
+      if (i != null && SPOTS[i] && SPOTS[i].available && !SPOTS[i].reported) return i;
+      return getFreeIdx(true);
+    },
+
+    syncFindLabels() {
+      const i = this.claimSpotIdx();
+      if (i < 0) return;
+      const s = SPOTS[i];
+      const label = s.street + ' ' + s.num + ', Centar';
+      const sub = document.getElementById('find-banner-sub');
+      if (sub) sub.textContent = s.street + ' ' + s.num + ' · just now';
+      const nav = document.getElementById('nav-dest-label');
+      if (nav) nav.textContent = label;
+    },
+
+    claimSpot(idx) {
+      const i = idx != null ? idx : this.claimSpotIdx();
+      if (i < 0 || !SPOTS[i] || !SPOTS[i].available || SPOTS[i].reported) return;
+      this.claimedSpotIdx = i;
+      this.syncFindLabels();
+      this.go(4);
+    },
+
+    releaseSharedParkedSpot() {
+      const i = SPOTS.findIndex(s =>
+        Math.abs(s.lat - USER_PARKED[0]) < 0.00008 && Math.abs(s.lng - USER_PARKED[1]) < 0.00008
+      );
+      if (i < 0) return;
+      SPOTS[i].available = true;
+      SPOTS[i].detail = 'Just shared · leaving now';
+      SPOTS[i].freesInMin = null;
+    },
 
     promoteAnotherAvailable(nearLat, nearLng, excludeIdx) {
       const hasFree = SPOTS.some((s, i) => s.available && !s.reported && i !== excludeIdx);
@@ -1639,7 +2216,7 @@
 
 
     computeNearbyIndices(radiusM) {
-      radiusM = radiusM || 550;
+      radiusM = radiusM || 650;
       if (!this.userLocation) { this.nearbyIndices = new Set(); return; }
       const set = new Set();
       SPOTS.forEach((sp, i) => {
@@ -1648,51 +2225,65 @@
       this.nearbyIndices = set;
     },
 
-    getNearbyStats() {
-      let free = 0, total = 0;
-      (this.nearbyIndices || new Set()).forEach(i => {
-        const sp = SPOTS[i]; if (!sp) return;
-        total++; if (sp.available) free++;
-      });
-      return { free, total };
-    },
-
-    updateNearbyChip() {
-      const chip = document.getElementById('nearby-chip');
-      if (!chip) return;
-      const st = this.getNearbyStats();
-      const city = this.getStats();
-      chip.textContent = '📍 ' + USER_DEFAULT_LABEL + ' · ' +
-        (st.free ? st.free + ' free nearby' : 'No free nearby') +
-        ' · ' + city.available + ' in Split';
-      chip.classList.add('show');
+    ensureUserPane(map) {
+      if (!map.getPane('userPane')) {
+        const pane = map.createPane('userPane');
+        pane.style.zIndex = 700;
+      }
     },
 
     updateUserOnMap(mapId) {
       if (mapId !== 'map-1' || !this.userLocation) return;
       const map = this.maps[mapId];
       if (!map) return;
-      if (!this.userLocLayer) this.userLocLayer = L.layerGroup().addTo(map);
-      else if (!map.hasLayer(this.userLocLayer)) this.userLocLayer.addTo(map);
+      this.ensureUserPane(map);
+      if (!this.userLocLayer) {
+        this.userLocLayer = L.layerGroup({ pane: 'userPane' }).addTo(map);
+      } else if (!map.hasLayer(this.userLocLayer)) {
+        this.userLocLayer.addTo(map);
+      }
       this.userLocLayer.clearLayers();
-      L.marker(this.userLocation, {
-        icon: L.divIcon({ className: 'pin-wrap', html: '<div class="user-loc-dot"></div>', iconSize: [16,16], iconAnchor: [8,8] }),
-        zIndexOffset: 1000
-      }).bindPopup('<strong>You are here</strong><br><span style="color:#6B7280;font-size:12px">' + USER_DEFAULT_LABEL + '</span>')
+      const acc = this.userLocationAcc || 45;
+      L.circle(this.userLocation, {
+        radius: acc,
+        color: '#3B82F6',
+        fillColor: '#3B82F6',
+        fillOpacity: 0.14,
+        weight: 2,
+        dashArray: '5,7',
+        pane: 'userPane'
+      }).addTo(this.userLocLayer);
+      this.userMarker = L.marker(this.userLocation, {
+        icon: this.userLocIcon(),
+        zIndexOffset: 2000,
+        pane: 'userPane'
+      }).bindPopup(this.userLocPopupHtml())
         .addTo(this.userLocLayer);
     },
 
-    centerOnUser(animate) {
+    userLocIcon() {
+      return L.divIcon({
+        className: 'user-loc-wrap',
+        html: '<div class="user-loc-pin"><div class="user-loc-ring"><div class="user-loc-dot"></div></div><span class="user-loc-label">You</span></div>',
+        iconSize: [56, 52],
+        iconAnchor: [28, 30]
+      });
+    },
+
+    focusMapOnUser(animate, opts) {
+      opts = opts || {};
       const map = this.maps['map-1'];
       if (!map) return;
-      this.setDefaultUserLocation();
-      const pts = [this.userLocation];
-      (this.nearbyIndices || new Set()).forEach(i => { const sp = SPOTS[i]; if (sp) pts.push([sp.lat, sp.lng]); });
-      if (pts.length > 1) {
-        map.fitBounds(L.latLngBounds(pts), { padding: [56, 56], maxZoom: 16, animate: animate !== false });
-      } else {
-        map.setView(this.userLocation, 16, { animate: animate !== false });
+      if (!opts.keepLocation) this.setDefaultUserLocation();
+      this.updateUserOnMap('map-1');
+      map.setView(this.getUserPos(), opts.zoom || 17, { animate: animate !== false });
+      if (opts.openPopup) {
+        setTimeout(() => { if (this.userMarker) this.userMarker.openPopup(); }, animate === false ? 80 : 450);
       }
+    },
+
+    centerOnUser(animate) {
+      this.focusMapOnUser(animate, { openPopup: true });
     },
 
     toggleAddSpotMode() {
@@ -1742,7 +2333,6 @@
       this.closeAddSpotModal();
       this.refreshMapPins('map-1');
       this.updateUserOnMap('map-1');
-      this.updateNearbyChip();
       this.updateHomeSheet();
     },
 
@@ -1768,9 +2358,10 @@
       }
       this.points += 5;
       this.updatePoints();
+      this.bumpStat('reports', 1);
       this.refreshMapPins('map-1');
       this.updateHomeSheet();
-      this.updateNearbyChip();
+      this.bumpStat('community', 1);
     },
 
     popupReportHtml(i) {
@@ -1809,38 +2400,8 @@
       this.addPinsToGroup(g, mapId, false);
     },
 
-    addMapControls(map, id) {
+    addMapControls(map) {
       L.control.zoom({ position: 'bottomright' }).addTo(map);
-      const self = this;
-      const Recenter = L.Control.extend({
-        options: { position: 'bottomright' },
-        onAdd() {
-          const wrap = L.DomUtil.create('div', 'leaflet-bar leaflet-control map-recenter-wrap');
-          const btn = L.DomUtil.create('a', 'map-recenter-btn', wrap);
-          btn.href = '#';
-          btn.title = 'Recenter map';
-          btn.innerHTML = '⌖';
-          L.DomEvent.disableClickPropagation(wrap);
-          L.DomEvent.on(btn, 'click', L.DomEvent.stop).on(btn, 'click', L.DomEvent.preventDefault)
-            .on(btn, 'click', () => self.recenterMap(id));
-          return wrap;
-        }
-      });
-      new Recenter().addTo(map);
-    },
-
-    recenterMap(id) {
-      const map = this.maps[id];
-      if (!map) return;
-      if (id === 'map-3' || id === 'map-4') {
-        map.fitBounds(L.latLngBounds([this.getUserPos(), coords(getFreeIdx())]), { padding: [48, 48], maxZoom: 17 });
-      } else if (id === 'map-2') {
-        map.setView(coords(getFreeIdx()), 17, { animate: true });
-      } else if (id === 'map-1' && this.userLocation) {
-        this.centerOnUser(true);
-      } else {
-        map.setView(CENTER, 16, { animate: true });
-      }
     },
 
     toggleSheet() {
@@ -1871,6 +2432,7 @@
           if (id === 'map-1') {
             this.renderCrowds(id);
             this.updateUserOnMap(id);
+            this.focusMapOnUser(false, { keepLocation: true });
           }
         }, 120);
         return this.maps[id];
@@ -1899,8 +2461,8 @@
         this.spotCluster.clearLayers();
       }
       this.spotCluster = L.markerClusterGroup({
-        maxClusterRadius: 72,
-        disableClusteringAtZoom: 17,
+        maxClusterRadius: 52,
+        disableClusteringAtZoom: 16,
         spiderfyOnMaxZoom: true,
         showCoverageOnHover: false,
         chunkedLoading: true,
@@ -1952,21 +2514,25 @@
       if (s.available) {
         return '<strong>✅ ' + title + '</strong><br><span style="color:#6B7280;font-size:12px">' +
           s.detail + '</span>' + comm +
-          '<button class="popup-btn" onclick="App.go(3)">Claim this Misto →</button>' + rep;
+          '<button class="popup-btn" onclick="App.claimSpot(' + i + ')">Claim this Misto →</button>' + rep;
       }
       return '<strong>🔴 Occupied</strong><br><span style="font-weight:600">' + title +
         '</span><br><span style="color:#6B7280;font-size:12px">' + s.detail + '</span>' + comm + rep;
     },
 
-    addPinsToGroup(group, mapId, hard) {
+    addPinsToGroup(group, mapId, pinOpts) {
+      const hardAll = pinOpts === true;
+      const emphasizeIdx = pinOpts && typeof pinOpts === 'object' ? pinOpts.emphasizeIdx : null;
       this.markers = this.markers || {};
       this.markers[mapId] = [];
       SPOTS.forEach((spot, i) => {
         if (spot.reported) return;
         const state = spot.available ? 'green' : 'red';
         const near = this.nearbyIndices && this.nearbyIndices.has(i);
+        const pulse = (hardAll && spot.available) || (emphasizeIdx === i && spot.available) ||
+          (near && spot.available && emphasizeIdx == null);
         const m = L.marker([spot.lat, spot.lng], {
-          icon: this.pinIcon(state, (hard && spot.available) || (near && spot.available), spot.community, spot.reported)
+          icon: this.pinIcon(state, pulse, spot.community, spot.reported)
         }).addTo(group);
         m.bindPopup(this.popupHtml(i));
         m.on('click', () => m.openPopup());
@@ -2026,46 +2592,46 @@
         attributionControl: false
       });
       L.tileLayer(TILE, { subdomains: 'abcd', maxZoom: 20 }).addTo(map);
-      this.addMapControls(map, id);
+      this.addMapControls(map);
 
       if (opts.mode === 'home') {
         this.addPinsToHomeMap(map, id);
-        map.setView(USER_DEFAULT, 17);
         map.setMinZoom(14);
         const self = this;
         map.on('click', e => { if (self.addSpotMode) self.addCommunitySpot(e.latlng.lat, e.latlng.lng); });
         this.updateUserOnMap(id);
+        this.focusMapOnUser(false, { openPopup: true });
         this.renderCrowds(id);
       }
       if (opts.mode === 'highlight') {
         const g = L.layerGroup().addTo(map);
         this.mapLayers[id] = g;
-        L.circle(coords(getFreeIdx()), {
-          radius: 40, color: '#00D4AA', fillColor: '#00D4AA',
-          fillOpacity: 0.15, weight: 2
+        const parked = USER_PARKED;
+        L.circle(parked, {
+          radius: 40, color: '#3B82F6', fillColor: '#3B82F6',
+          fillOpacity: 0.12, weight: 2
         }).addTo(g);
-        L.marker(coords(getFreeIdx()), { icon: this.pinIcon('green', false) })
-          .bindPopup(this.popupHtml(getFreeIdx())).addTo(g);
-        map.setView(coords(getFreeIdx()), 17);
+        L.marker(parked, { icon: this.userLocIcon() })
+          .bindPopup('<strong>Your spot</strong><br><span style="color:#6B7280;font-size:12px">' +
+            USER_SPOT.street + ' ' + USER_SPOT.num + ', ' + USER_SPOT.label + '</span>').addTo(g);
+        map.setView(parked, 17);
       }
       if (opts.mode === 'find') {
         const g = L.layerGroup().addTo(map);
         this.mapLayers[id] = g;
-        this.addPinsToGroup(g, id, true);
+        const claimIdx = this.claimSpotIdx();
+        this.addPinsToGroup(g, id, { emphasizeIdx: claimIdx });
         const u = this.getUserPos();
+        const dest = coords(claimIdx);
         const route = [];
         for (let i = 0; i <= 24; i++) {
           const f = i / 24;
-          route.push([
-            u[0] + (coords(getFreeIdx())[0] - u[0]) * f,
-            u[1] + (coords(getFreeIdx())[1] - u[1]) * f
-          ]);
+          route.push([u[0] + (dest[0] - u[0]) * f, u[1] + (dest[1] - u[1]) * f]);
         }
         L.polyline(route, { color: '#3B82F6', weight: 3, dashArray: '8,10' }).addTo(g);
         const uPos = this.getUserPos();
-        L.marker(uPos, {
-          icon: L.divIcon({ className: 'seeker-wrap', html: '<div class="user-loc-dot"></div>', iconSize: [16,16], iconAnchor: [8,8] })
-        }).bindPopup('<strong>You are here</strong><br><span style="color:#6B7280;font-size:12px">Nearby Misto on map</span>').addTo(g);
+        L.marker(uPos, { icon: this.userLocIcon() })
+          .bindPopup('<strong>You are here</strong><br><span style="color:#6B7280;font-size:12px">' + USER_DEFAULT_LABEL + '</span>').addTo(g);
         map.fitBounds(L.latLngBounds(route), { padding: [40, 40], maxZoom: 17 });
       }
       if (opts.mode === 'nav') map.setView(CENTER, 16);
@@ -2124,6 +2690,9 @@
       const from = this.points;
       this.points += 10;
       this.updatePoints();
+      this.bumpStat('shares', 1);
+      this.releaseSharedParkedSpot();
+      this.updateHomeSheet();
       setTimeout(() => {
         btn.style.display = 'none';
         document.getElementById('demo-target-share-success').classList.add('show');
@@ -2142,6 +2711,9 @@
       const from = this.points;
       this.points += 10;
       this.updatePoints();
+      this.bumpStat('shares', 1);
+      this.releaseSharedParkedSpot();
+      this.updateHomeSheet();
       setTimeout(() => {
         btn.style.display = 'none';
         document.getElementById('demo-target-share-success').classList.add('show');
@@ -2191,6 +2763,13 @@
       sp.style.width = Math.round(er.width + pad * 2) + 'px';
       sp.style.height = Math.round(er.height + pad * 2) + 'px';
       sp.classList.add('show');
+      this.scheduleCoachReposition();
+    },
+
+    scheduleCoachReposition() {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => this.positionCoachAwayFromSpotlight());
+      });
     },
 
     highlightMapPoint(mapId, latlng, size) {
@@ -2209,23 +2788,134 @@
       sp.style.width = size + 'px';
       sp.style.height = size + 'px';
       sp.classList.add('show');
+      this.scheduleCoachReposition();
+    },
+
+    clearPinHighlight() {
+      document.querySelectorAll('.pin-demo-pulse').forEach(el => el.classList.remove('pin-demo-pulse'));
+      document.querySelectorAll('.pin-wrap.pin-demo-target').forEach(el => el.classList.remove('pin-demo-target'));
+      const mapId = this.demoHighlightMapId || 'map-1';
+      if (this.demoHighlightIdx != null && this.markers[mapId]) {
+        const i = this.demoHighlightIdx;
+        const m = this.markers[mapId][i];
+        const spot = SPOTS[i];
+        if (m && spot && !spot.reported) {
+          const state = spot.available ? 'green' : 'red';
+          m.setIcon(this.pinIcon(state, false, spot.community, spot.reported));
+        }
+      }
+      this.demoHighlightIdx = null;
+      this.demoHighlightMapId = null;
+    },
+
+    highlightPin(mapId, idx, spotlightSize) {
+      this.clearPinHighlight();
+      const m = this.markers[mapId] && this.markers[mapId][idx];
+      if (!m) return;
+      const spot = SPOTS[idx];
+      if (!spot || spot.reported) return;
+      const state = spot.available ? 'green' : 'red';
+      m.setIcon(this.pinIcon(state, spot.available, spot.community, spot.reported));
+      const wrap = m.getElement();
+      if (wrap) {
+        wrap.classList.add('pin-demo-target');
+        const pin = wrap.querySelector('.pin-green, .pin-red');
+        if (pin) pin.classList.add('pin-demo-pulse');
+      }
+      this.demoHighlightIdx = idx;
+      this.demoHighlightMapId = mapId;
+      const ll = m.getLatLng();
+      this.highlightMapPoint(mapId, [ll.lat, ll.lng], spotlightSize || 68);
     },
 
     clearHighlight() {
       document.getElementById('demo-spotlight').classList.remove('show');
-      document.querySelectorAll('.pin-demo-pulse').forEach(el => el.classList.remove('pin-demo-pulse'));
+      this.clearPinHighlight();
+      const coach = document.getElementById('demo-coach');
+      coach.classList.remove('coach-dynamic');
+      coach.style.top = '';
+      coach.style.bottom = '';
     },
 
-    coach(title, text) {
+    setCoachPlace(place) {
+      const c = document.getElementById('demo-coach');
+      c.classList.remove('coach-top', 'coach-below-header', 'coach-above-sheet', 'coach-find', 'coach-scroll', 'coach-dynamic', 'coach-hide');
+      c.style.top = '';
+      c.style.bottom = '';
+      if (place) c.classList.add(place);
+    },
+
+    hideCoach() {
+      const c = document.getElementById('demo-coach');
+      c.classList.add('coach-hide');
+      c.classList.remove('show');
+    },
+
+    coach(title, text, place) {
+      const c = document.getElementById('demo-coach');
+      const sp = document.getElementById('demo-spotlight');
       document.getElementById('demo-coach-title').textContent = title;
       document.getElementById('demo-coach-text').textContent = text;
-      document.getElementById('demo-coach').classList.add('show');
+      c.classList.remove('coach-hide');
+      c.classList.add('show');
+      if (sp.classList.contains('show')) {
+        this.scheduleCoachReposition();
+      } else if (place) {
+        this.setCoachPlace(place);
+      }
+    },
+
+    positionCoachAwayFromSpotlight() {
+      const sp = document.getElementById('demo-spotlight');
+      const coach = document.getElementById('demo-coach');
+      const root = this.demoRoot();
+      if (!sp.classList.contains('show') || !root || !coach.classList.contains('show')) return;
+
+      coach.classList.remove('coach-top', 'coach-below-header', 'coach-above-sheet', 'coach-find', 'coach-scroll');
+      coach.classList.add('coach-dynamic');
+
+      const rr = root.getBoundingClientRect();
+      const sr = sp.getBoundingClientRect();
+      const spotTop = sr.top - rr.top;
+      const spotBottom = sr.bottom - rr.top;
+      const spotMid = (spotTop + spotBottom) / 2;
+      const rootH = rr.height;
+      const roomBelow = rootH - spotBottom;
+      const roomAbove = spotTop;
+      const gap = 14;
+      const coachH = coach.offsetHeight || 90;
+      const need = coachH + gap;
+
+      if (spotMid < rootH * 0.38) {
+        coach.style.top = 'auto';
+        coach.style.bottom = '12px';
+        return;
+      }
+      if (spotMid > rootH * 0.62) {
+        coach.style.top = '48px';
+        coach.style.bottom = 'auto';
+        return;
+      }
+      if (roomBelow >= need) {
+        coach.style.top = Math.round(spotBottom + gap) + 'px';
+        coach.style.bottom = 'auto';
+      } else if (roomAbove >= need) {
+        coach.style.top = 'auto';
+        coach.style.bottom = Math.round(rootH - spotTop + gap) + 'px';
+      } else if (roomBelow >= roomAbove) {
+        coach.style.top = 'auto';
+        coach.style.bottom = '12px';
+      } else {
+        coach.style.top = '48px';
+        coach.style.bottom = 'auto';
+      }
     },
 
     async startDemo() {
       if (this.demoActive) return;
       this.demoActive = true;
       this.demoAborted = false;
+      this.claimedSpotIdx = null;
       ['map-1', 'map-2', 'map-3', 'map-4'].forEach(id => {
         if (this.maps[id]) { this.maps[id].remove(); delete this.maps[id]; delete this.mapLayers[id]; if (id === 'map-1') this.spotCluster = null; }
       });
@@ -2234,6 +2924,7 @@
       document.getElementById('demo-ui').classList.add('active');
       document.getElementById('demo-start-btn').disabled = true;
       document.getElementById('map-sheet').classList.add('collapsed');
+      this.setCoachPlace('coach-top');
 
       this.go(1);
       await delay(500);
@@ -2241,7 +2932,7 @@
       if (!map) { this.ensureMap('map-1', { mode: 'home' }); map = this.maps['map-1']; }
       this.setMapLock('map-1', true);
 
-      const total = 58000;
+      const total = 60000;
       const t0 = Date.now();
       const prog = setInterval(() => {
         if (this.demoAborted) return;
@@ -2250,103 +2941,179 @@
       }, 120);
       this.demoTimers.push(prog);
 
+      const fi = getFreeIdx(true);
+      const fc = coords(fi);
+      const fs = SPOTS[fi];
+      const spotLabel = fs.street + ' ' + fs.num;
+
       try {
-        this.coach('🗺 Split live', 'Misto across the city — watch occupancy update in real time.');
-        map.flyToBounds(L.latLngBounds(allCoords()), { padding: [44, 44], duration: 4, maxZoom: 16 });
-        await delay(5200);
+        /* 1 · Map — you in Centar */
+        this.setDefaultUserLocation();
+        this.focusMapOnUser(false, { openPopup: true, keepLocation: true });
+        this.coach('📍 Centar, Split', 'Red = taken, green = free. The map updates live as neighbors come and go.', 'coach-top');
+        await delay(4500);
         if (this.demoAborted) return;
 
-        this.coach('🔴 Pressure zone', 'Zooming into a packed block — typical Sunday evening.');
-        map.flyTo(coords(getFreeIdx()), 17, { duration: 2.5 });
-        await delay(4800);
-        if (this.demoAborted) return;
-
-        this.coach('✅ Misto available', 'Matice Hrvatske 14 just opened — 0 claims so far.');
-        map.flyTo(coords(getFreeIdx()), 18, { duration: 2 });
-        await delay(1600);
-        await this.waitForLayout();
-        if (this.markers['map-1'] && this.markers['map-1'][getFreeIdx()]) {
-          this.markers['map-1'][getFreeIdx()].openPopup();
-        }
-        this.highlightMapPoint('map-1', coords(getFreeIdx()), 64);
-        await delay(4200);
-        if (this.demoAborted) return;
-        this.clearHighlight();
-        map.closePopup();
-
-        this.coach('🚗 Share your spot', 'Leaving? One tap — or auto-release via Bluetooth.');
+        /* 2 · Share — you leave Marmontova 12 */
+        this.setDemoUserLocation(USER_PARKED[0], USER_PARKED[1], { label: 'Marmontova 12 · your spot' });
+        this.focusMapOnUser(true, { keepLocation: true, zoom: 17 });
         document.getElementById('map-sheet').classList.remove('collapsed');
         map.invalidateSize();
-        await delay(450);
         await this.waitForLayout();
+        this.coach('🚗 Leaving?', 'Tap I\'m Leaving to tell others your spot is opening up.', 'coach-above-sheet');
+        await delay(3200);
         await this.highlightEl(document.getElementById('demo-target-leaving'));
-        await delay(3800);
+        await delay(2400);
         if (this.demoAborted) return;
         this.clearHighlight();
+        await delay(400);
 
         this.go(2);
-        await delay(600);
+        await delay(800);
         await this.waitForLayout();
-        await this.highlightEl(document.getElementById('demo-target-share'));
+        this.coach('🚗 Share your Misto', 'One tap — Marmontova 12 goes live for people nearby.', 'coach-scroll');
         await delay(2200);
+        await this.highlightEl(document.getElementById('demo-target-share'));
+        await delay(1800);
         this.demoShareSpot();
-        await delay(600);
+        await delay(1000);
         await this.highlightEl(document.getElementById('demo-target-share-success'));
-        await delay(3600);
+        await delay(3400);
         if (this.demoAborted) return;
         this.clearHighlight();
         this.resetShare();
+        await delay(400);
 
-        this.coach('🔍 Find a Misto', 'AI ranks streets — claim before someone else does.');
+        /* 3 · Find — claim a nearby opening */
+        this.claimedSpotIdx = fi;
+        this.syncFindLabels();
+        this.setDemoUserLocation(USER_CENTAR[0], USER_CENTAR[1], { label: 'Looking for parking' });
+        this.coach('🔍 Find parking', spotLabel + ' is free nearby — claim it before someone else.', 'coach-find');
         this.go(3);
-        await delay(600);
+        await delay(800);
         await this.waitForLayout();
         map = this.maps['map-3'];
-        if (map) map.flyToBounds(L.latLngBounds([SEEKER, coords(getFreeIdx())]), { padding: [50, 50], duration: 2.5, maxZoom: 17 });
-        await delay(400);
+        if (map) map.flyToBounds(L.latLngBounds([this.getUserPos(), fc]), { padding: [50, 50], duration: 1.6, maxZoom: 16 });
+        await delay(1800);
+        this.hideCoach();
+        this.highlightPin('map-3', fi, 64);
         await this.highlightEl(document.getElementById('demo-target-find-banner'));
-        await delay(4500);
+        this.coach('🔍 Find parking', spotLabel + ' just opened — tap Claim when you are ready.', 'coach-find');
+        await delay(4000);
         if (this.demoAborted) return;
         this.clearHighlight();
+        await delay(300);
 
-        this.coach('🎯 Navigation', 'Reserved — follow the route to your Misto.');
-        this.go(4);
+        /* 4 · Navigate — walk to your reserved spot */
+        this.coach('🎯 Navigate', 'Reserved — follow the route to ' + spotLabel + '.', 'coach-find');
+        this.claimSpot(fi);
         await delay(600);
         await this.waitForLayout();
         map = this.maps['map-4'];
-        if (map) map.flyTo(coords(getFreeIdx()), 17, { duration: 2 });
-        await delay(500);
+        if (map) map.flyToBounds(L.latLngBounds([this.getUserPos(), fc]), { padding: [48, 48], duration: 1.5, maxZoom: 16 });
+        await delay(1600);
+        this.hideCoach();
         await this.highlightEl(document.getElementById('demo-target-nav-timer'));
+        this.coach('🎯 Navigate', 'Timer counts down while you walk — less circling, less stress.', 'coach-scroll');
         if (this.navDemoTimer) clearTimeout(this.navDemoTimer);
-        this.navDemoTimer = setTimeout(() => this.showParkSuccess(), 4500);
-        await delay(5000);
+        this.navDemoTimer = setTimeout(() => {
+          this.setDemoUserLocation(fc[0], fc[1], { label: spotLabel });
+          this.showParkSuccess();
+        }, 3800);
+        await delay(4200);
         if (this.demoAborted) return;
         this.clearHighlight();
+        await delay(400);
 
-        this.coach('💰 Tvoji Gušti', 'Earn Gušti helping neighbors — spend at Kafić Zlatna Vrata and more.');
+        /* 5 · Tvoji Gušti */
         document.getElementById('park-success').classList.remove('show');
         this.clearNavOverlay();
+        this.updatePoints();
+        this.updateCo2WalletStrip();
         this.go(5);
         await delay(600);
         await this.waitForLayout();
         const walletScroll = document.querySelector('#screen-5 .scroll-body');
         if (walletScroll) walletScroll.scrollTop = 0;
+        this.hideCoach();
         await this.highlightEl(document.getElementById('demo-target-wallet'));
-        await delay(3800);
+        this.coach('💰 Tvoji Gušti', 'You earned Gušti for sharing and claiming a Misto.', 'coach-scroll');
+        await delay(3000);
         if (this.demoAborted) return;
         this.clearHighlight();
-
-        this.openQR('Kafić Zlatna Vrata');
+        if (walletScroll) {
+          const rewards = document.getElementById('demo-target-wallet-rewards');
+          if (rewards) walletScroll.scrollTop = Math.max(0, rewards.offsetTop - 12);
+        }
+        await delay(250);
+        await this.waitForLayout();
+        this.hideCoach();
+        await this.highlightEl(document.getElementById('demo-target-wallet-rewards'));
+        this.coach('💰 Spend locally', 'Redeem at cafés, shops, and partners around Split.', 'coach-scroll');
         await delay(2800);
-        this.closeQR();
-        await delay(400);
-
-        this.coach('Ae!', 'Split dišpet. Zero concrete. Explore the map freely!');
-        this.go(1);
-        await delay(800);
-        map = this.maps['map-1'];
-        if (map) map.flyToBounds(L.latLngBounds(allCoords()), { padding: [40, 40], duration: 3, maxZoom: 16 });
+        if (this.demoAborted) return;
+        this.clearHighlight();
+        await this.highlightEl(document.getElementById('demo-target-qr-btn'));
+        this.coach('☕ Gušti Pay', 'Tap Get QR Code — show it at the partner to redeem.', 'coach-scroll');
+        await delay(1600);
+        if (this.demoAborted) return;
+        this.clearHighlight();
+        this.hideCoach();
+        this.demoOpenQR('Kafić Zlatna Vrata');
+        playDing();
         await delay(3200);
+        this.closeQR();
+        if (this.demoAborted) return;
+        await delay(200);
+
+        /* 6 · Impact */
+        const co2Kg = this.computeUserCo2Kg();
+        const eqKm = Math.round(co2Kg * 4.2);
+        const eqMin = Math.round(co2Kg * 35);
+        const eqTrees = Math.max(1, Math.round(co2Kg / 6));
+        this.go(7);
+        await delay(600);
+        await this.waitForLayout();
+        const impactScroll = document.querySelector('#screen-7 .scroll-body');
+        if (impactScroll) impactScroll.scrollTop = 0;
+        this.renderImpact();
+        this.hideCoach();
+        await this.highlightEl(document.getElementById('demo-target-co2-hero'));
+        this.coach('🌱 CO₂ avoided', 'Every shared and claimed Misto adds up in Centar.', 'coach-scroll');
+        await this.animateCo2Count(0, co2Kg, 1500);
+        await delay(2700);
+        if (this.demoAborted) return;
+        this.clearHighlight();
+        await delay(200);
+        this.hideCoach();
+        await this.highlightEl(document.getElementById('demo-target-co2-equiv'));
+        this.coach('🌱 Real savings', eqKm + ' km not driven · ' + eqMin + ' min saved · ~' + eqTrees + ' tree-year', 'coach-scroll');
+        await delay(3700);
+        if (this.demoAborted) return;
+        this.clearHighlight();
+        if (impactScroll) {
+          const board = document.getElementById('demo-target-co2-board');
+          if (board) impactScroll.scrollTop = Math.max(0, board.offsetTop - 16);
+        }
+        await delay(250);
+        await this.waitForLayout();
+        this.hideCoach();
+        await this.highlightEl(document.getElementById('demo-target-co2-board'));
+        this.coach('🏆 Centar rank', 'See how your neighborhood compares on the leaderboard.', 'coach-scroll');
+        await delay(3900);
+        if (this.demoAborted) return;
+        this.clearHighlight();
+        await delay(200);
+
+        /* Done */
+        this.setDefaultUserLocation();
+        document.getElementById('map-sheet').classList.add('collapsed');
+        this.coach('You\'re set', 'Share when you leave, claim when you arrive. Explore the map anytime.', 'coach-top');
+        this.go(1);
+        await delay(600);
+        this.focusMapOnUser(true, { openPopup: true, keepLocation: true, zoom: 17 });
+        await delay(2600);
+        this.bumpStat('demoDone', 1);
       } catch (e) { /* demo interrupted */ }
       this.stopDemo();
     },
@@ -2359,14 +3126,20 @@
       if (this.navTimer) clearInterval(this.navTimer);
       if (this.navDemoTimer) clearTimeout(this.navDemoTimer);
       if (this.shareTimer) clearTimeout(this.shareTimer);
+      if (this.qrTimer) clearInterval(this.qrTimer);
+      this.closeQR();
       document.querySelector('.phone').classList.remove('demo-active');
       document.getElementById('demo-ui').classList.remove('active');
       document.getElementById('demo-start-btn').disabled = false;
       document.getElementById('demo-progress-fill').style.width = '0%';
       this.clearHighlight();
+      this.hideCoach();
+      this.claimedSpotIdx = null;
       document.getElementById('park-success').classList.remove('show');
       ['map-1', 'map-2', 'map-3', 'map-4'].forEach(id => this.setMapLock(id, false));
       this.resetShare();
+      this.setDefaultUserLocation();
+      this.setCoachPlace('coach-top');
       this.go(1);
     },
 
@@ -2396,19 +3169,18 @@
         m.bindPopup(this.popupHtml(i));
         m.on('click', () => m.openPopup());
       });
-      L.circle(coords(getFreeIdx()), {
+      const claimIdx = this.claimSpotIdx();
+      L.circle(coords(claimIdx), {
         radius: 35, color: '#00D4AA', fillColor: '#00D4AA',
         fillOpacity: 0.2, weight: 2
       }).addTo(overlay);
 
       const u = this.getUserPos();
+      const dest = coords(claimIdx);
       const route = [];
       for (let i = 0; i <= 30; i++) {
         const f = i / 30;
-        route.push([
-          u[0] + (coords(getFreeIdx())[0] - u[0]) * f,
-          u[1] + (coords(getFreeIdx())[1] - u[1]) * f
-        ]);
+        route.push([u[0] + (dest[0] - u[0]) * f, u[1] + (dest[1] - u[1]) * f]);
       }
       L.polyline(route, { color: '#3B82F6', weight: 3, dashArray: '8,10' }).addTo(overlay);
       const seeker = L.marker(this.getUserPos(), {
@@ -2454,8 +3226,12 @@
     },
 
     showParkSuccess() {
+      this.bumpStat('parked', 1);
+      const co2El = document.getElementById('park-success-co2');
+      if (co2El) co2El.textContent = '🟢 -0.4kg';
       if (this.navTimer) clearInterval(this.navTimer);
       if (this.navDemoTimer) clearTimeout(this.navDemoTimer);
+      if (this.demoActive) this.hideCoach();
       document.getElementById('park-success').classList.add('show');
       const svg = document.querySelector('#park-success .check-svg');
       if (svg) {
@@ -2468,10 +3244,43 @@
       if (this.navTimer) clearInterval(this.navTimer);
       if (this.navDemoTimer) clearTimeout(this.navDemoTimer);
       this.clearNavOverlay();
+      this.claimedSpotIdx = null;
       this.go(1);
     },
 
-    openQR(merchant) {
+    demoOpenQR(merchant) {
+      const titleEl = document.getElementById('qr-modal-title');
+      if (titleEl) titleEl.textContent = 'Show this to the cashier';
+      renderAeQR(merchant, this.points);
+      document.getElementById('qr-merchant').textContent = merchant;
+      document.getElementById('qr-modal').classList.add('show');
+      let s = 299;
+      const exp = document.getElementById('qr-expiry');
+      if (this.qrTimer) clearInterval(this.qrTimer);
+      this.qrTimer = setInterval(() => {
+        s--;
+        exp.textContent = 'Expires in ' + Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+        if (s <= 0) clearInterval(this.qrTimer);
+      }, 1000);
+    },
+
+    openQR(merchant, cost, digital) {
+      if (cost != null && cost > 0) {
+        if (this.points < cost) {
+          alert('Not enough Gušti — you need ' + cost + ' but have ' + this.points + '.');
+          return;
+        }
+        this.points -= cost;
+        this.updatePoints();
+        playDing();
+      }
+      this.bumpStat('redeems', 1);
+      const titleEl = document.getElementById('qr-modal-title');
+      if (titleEl) {
+        titleEl.textContent = digital
+          ? 'Voucher active — show this code'
+          : 'Show this to the cashier';
+      }
       renderAeQR(merchant, this.points);
       document.getElementById('qr-merchant').textContent = merchant;
       document.getElementById('qr-modal').classList.add('show');
@@ -2542,6 +3351,8 @@
     },
 
     renderProfile() {
+      if (!this.stats) this.loadAchievements();
+      this.renderAchievements();
       const guest = document.getElementById('profile-guest');
       const logged = document.getElementById('profile-logged');
       if (!guest || !logged) return;
@@ -2602,7 +3413,10 @@
   document.getElementById('bottom-nav').style.display = 'none';
   document.getElementById('map-sheet').classList.add('collapsed');
   App.loadSession();
+  App.loadAchievements();
+  App.updateCo2WalletStrip();
   App.setDefaultUserLocation();
+  App.syncFindLabels();
   setTimeout(() => App.updateHomeSheet(), 3200);
   </script>
 </body>
