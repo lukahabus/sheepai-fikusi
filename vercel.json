@@ -3,6 +3,7 @@
   "routes": [
     { "src": "/demo", "dest": "/demo.html" },
     { "src": "/pitch", "dest": "/pitch.html" },
+    { "handle": "filesystem" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
