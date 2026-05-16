@@ -2,511 +2,638 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Ae! — Split Parking</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
   <style>
-    /* ── Shared design tokens (same as demo.html) ── */
     :root {
       --bg: #0a0a0f;
+      --surface: #13131a;
       --teal: #00D4AA;
-      --danger: #FF4444;
+      --red: #FF4444;
       --blue: #3B82F6;
       --amber: #F59E0B;
-      --glass: rgba(15, 15, 22, 0.88);
-      --border: rgba(255, 255, 255, 0.08);
-      --text-muted: rgba(255, 255, 255, 0.55);
+      --text: #F0F0F0;
+      --muted: #6B7280;
+      --border: rgba(255,255,255,0.08);
     }
-
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html, body {
       height: 100%;
       font-family: 'Inter', system-ui, sans-serif;
-      background: var(--bg);
-      color: #fff;
+      background: #050508;
+      color: var(--text);
+      overflow: hidden;
+      font-size: 14px;
+      -webkit-tap-highlight-color: transparent;
     }
-
-    .page-wrap {
-      min-height: 100vh;
+    .frame-wrap {
+      width: 100vw;
+      height: 100dvh;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 12px;
-      background: radial-gradient(ellipse at 50% 0%, #14141f 0%, var(--bg) 60%);
+      background: #050508;
     }
     .phone {
       width: 100%;
-      max-width: 390px;
-      height: min(844px, calc(100vh - 24px));
+      height: 100dvh;
+      max-height: 100dvh;
       background: var(--bg);
-      border-radius: 28px;
-      border: 1px solid var(--border);
-      box-shadow: 0 28px 90px rgba(0, 0, 0, 0.55);
       display: flex;
       flex-direction: column;
       overflow: hidden;
       position: relative;
     }
-    @media (max-width: 420px) {
-      .page-wrap { padding: 0; }
-      .phone { max-width: none; height: 100vh; border-radius: 0; border: none; }
+    @media (min-width: 481px) {
+      .phone {
+        width: 390px;
+        height: 844px;
+        max-height: 844px;
+        border-radius: 28px;
+        border: 1px solid var(--border);
+        box-shadow: 0 24px 80px rgba(0,0,0,0.65);
+      }
     }
-
-    .demo-badge {
-      position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
-      z-index: 900; font-size: 9px; font-weight: 700;
-      letter-spacing: 0.14em; text-transform: uppercase;
-      color: rgba(255, 255, 255, 0.22);
-    }
-
-    .screen-area { flex: 1; position: relative; overflow: hidden; }
+    .screen-area { flex: 1; position: relative; overflow: hidden; min-height: 0; }
     .screen {
       position: absolute; inset: 0;
       display: none; flex-direction: column;
       background: var(--bg); overflow: hidden;
     }
     .screen.active { display: flex; }
-
-    .glass {
-      background: var(--glass);
-      backdrop-filter: blur(18px);
-      -webkit-backdrop-filter: blur(18px);
+    .card {
+      background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 16px;
+      border-radius: 1rem;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
     }
 
-    /* ── Screen 0: Splash ── */
-    .splash {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 32px 28px;
-      text-align: center;
+    /* Splash */
+    #screen-0 {
+      align-items: center; justify-content: center;
+      text-align: center; padding: 32px 24px;
+      cursor: pointer;
     }
     .splash-logo {
-      font-size: 72px;
-      font-weight: 900;
-      color: var(--teal);
-      line-height: 1;
-      letter-spacing: -2px;
+      font-size: 96px; font-weight: 900; color: var(--teal);
+      line-height: 1; letter-spacing: -3px;
     }
-    .splash-tag { color: var(--teal); font-weight: 700; font-size: 17px; margin-top: 12px; }
-    .splash-sub { color: var(--text-muted); font-size: 14px; margin-top: 10px; line-height: 1.5; }
+    .splash-tag { font-size: 18px; color: #fff; margin-top: 16px; font-weight: 600; }
+    .splash-sub { font-size: 14px; color: var(--muted); margin-top: 10px; line-height: 1.5; }
+    .splash-dots { display: flex; gap: 8px; margin-top: 40px; justify-content: center; }
+    .splash-dots span {
+      width: 8px; height: 8px; border-radius: 50%; background: var(--teal);
+      animation: dot-pulse 1.2s ease-in-out infinite;
+    }
+    .splash-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .splash-dots span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes dot-pulse {
+      0%, 100% { opacity: 0.25; transform: scale(0.85); }
+      50% { opacity: 1; transform: scale(1); }
+    }
 
-    /* ── Screen 1: Map ── */
+    /* Map shared */
     .map-box { flex: 1; position: relative; min-height: 0; }
     .leaflet-map { width: 100%; height: 100%; }
     .leaflet-container { background: var(--bg); font-family: inherit; }
     .pin-wrap, .seeker-wrap { background: transparent !important; border: none !important; }
     .pin-red {
-      width: 14px; height: 14px;
-      background: var(--danger);
-      border: 2px solid #fff;
-      border-radius: 50%;
-      box-shadow: 0 0 10px rgba(255, 68, 68, 0.75);
+      width: 14px; height: 14px; background: var(--red);
+      border: 2px solid #fff; border-radius: 50%;
+      box-shadow: 0 0 10px rgba(255,68,68,0.8);
       animation: pulse-red 1.4s ease-in-out infinite;
     }
     .pin-green {
-      width: 16px; height: 16px;
-      background: var(--teal);
-      border: 2px solid #fff;
-      border-radius: 50%;
-      box-shadow: 0 0 14px rgba(0, 212, 170, 0.85);
-      animation: pulse-green 1.2s ease-in-out infinite;
+      width: 18px; height: 18px; background: var(--teal);
+      border: 2px solid #fff; border-radius: 50%;
+      box-shadow: 0 0 14px rgba(0,212,170,0.9);
+      animation: pulse-green 1s ease-in-out infinite;
     }
-    @keyframes pulse-red { 50% { transform: scale(1.22); } }
-    @keyframes pulse-green { 50% { transform: scale(1.14); } }
+    .pin-green.hard { animation: pulse-green-hard 0.7s ease-in-out infinite; }
+    @keyframes pulse-red { 50% { transform: scale(1.25); } }
+    @keyframes pulse-green { 50% { transform: scale(1.15); } }
+    @keyframes pulse-green-hard { 50% { transform: scale(1.35); box-shadow: 0 0 22px rgba(0,212,170,1); } }
+    .seeker-dot {
+      width: 14px; height: 14px; background: var(--blue);
+      border: 2px solid #fff; border-radius: 50%;
+      box-shadow: 0 0 12px rgba(59,130,246,0.9);
+    }
+    .leaflet-popup-content-wrapper {
+      background: var(--surface); color: var(--text);
+      border: 1px solid var(--border); border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    }
+    .leaflet-popup-tip { background: var(--surface); }
+    .popup-btn {
+      display: block; width: 100%; margin-top: 10px; padding: 10px;
+      background: var(--teal); color: var(--bg); border: none;
+      border-radius: 10px; font-weight: 700; font-size: 13px;
+      cursor: pointer; font-family: inherit; min-height: 44px;
+    }
 
     .top-bar {
       position: absolute; top: 0; left: 0; right: 0; z-index: 500;
-      padding: 14px 16px;
+      height: 56px; padding: 0 16px;
       display: flex; align-items: center; justify-content: space-between;
-      background: linear-gradient(180deg, rgba(10,10,15,0.95) 0%, transparent 100%);
+      background: rgba(10,10,15,0.85);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
     }
-    .logo-sm { font-weight: 800; font-size: 18px; color: var(--teal); }
+    .logo-sm { font-weight: 900; font-size: 20px; color: var(--teal); }
     .top-right { display: flex; align-items: center; gap: 10px; }
-    .polza-pill {
-      font-size: 12px; font-weight: 700;
-      color: var(--teal);
-      background: rgba(0, 212, 170, 0.12);
-      border: 1px solid rgba(0, 212, 170, 0.35);
-      padding: 5px 11px;
-      border-radius: 20px;
-    }
     .avatar {
-      width: 34px; height: 34px; border-radius: 50%;
-      background: linear-gradient(135deg, var(--blue), var(--teal));
+      width: 36px; height: 36px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--blue), #1d4ed8);
       display: flex; align-items: center; justify-content: center;
-      font-weight: 800; font-size: 13px;
+      font-weight: 700; font-size: 13px;
+    }
+    .pts-badge {
+      font-size: 12px; font-weight: 700; color: var(--bg);
+      background: var(--amber); padding: 4px 10px;
+      border-radius: 20px; margin-left: -8px;
     }
     .ai-live {
-      position: absolute; top: 56px; right: 14px; z-index: 500;
-      font-size: 10px; font-weight: 700;
-      padding: 6px 11px; border-radius: 20px;
-      background: rgba(10, 10, 15, 0.85);
-      border: 1px solid rgba(0, 212, 170, 0.35);
+      position: absolute; top: 64px; right: 12px; z-index: 500;
+      font-size: 11px; font-weight: 700; padding: 8px 12px;
+      border-radius: 20px; background: rgba(19,19,26,0.92);
+      border: 1px solid rgba(0,212,170,0.4);
       display: flex; align-items: center; gap: 6px;
     }
     .ai-dot {
-      width: 7px; height: 7px; border-radius: 50%;
-      background: var(--teal);
-      animation: pulse-green 1s infinite;
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--teal); animation: pulse-green 1s infinite;
     }
+
     .bottom-sheet {
       position: absolute; bottom: 0; left: 0; right: 0; z-index: 500;
-      height: 42%;
-      background: rgba(10, 10, 15, 0.96);
-      backdrop-filter: blur(22px);
+      height: 35%; min-height: 240px;
+      background: rgba(19,19,26,0.96);
+      backdrop-filter: blur(20px);
       border-top: 1px solid var(--border);
-      border-radius: 22px 22px 0 0;
-      padding: 18px 16px;
+      border-radius: 20px 20px 0 0;
+      padding: 12px 16px 16px;
       overflow-y: auto;
     }
-    .sheet-title { font-weight: 700; font-size: 15px; }
-    .sheet-sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+    .sheet-handle {
+      width: 40px; height: 4px; background: rgba(255,255,255,0.2);
+      border-radius: 2px; margin: 0 auto 12px;
+    }
+    .sheet-title { font-weight: 700; font-size: 16px; }
+    .occ-label { font-size: 12px; color: var(--muted); margin: 8px 0 6px; }
     .occ-bar {
-      height: 7px; border-radius: 4px;
-      background: rgba(255, 255, 255, 0.08);
-      margin: 12px 0 14px;
-      overflow: hidden;
+      height: 8px; border-radius: 4px; overflow: hidden;
+      display: flex; margin-bottom: 12px;
     }
-    .occ-fill {
-      height: 100%; width: 86%;
-      background: linear-gradient(90deg, var(--danger), #ff6b6b);
-      border-radius: 4px;
-    }
+    .occ-red { flex: 0 0 86%; background: var(--red); }
+    .occ-teal { flex: 1; background: var(--teal); }
     .street-row {
-      display: flex; justify-content: space-between;
-      font-size: 12px; padding: 7px 0;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-    }
-    .cta-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
-
-    /* ── Screens 2–5 shared ── */
-    .screen-header {
-      flex-shrink: 0;
-      padding: 14px 16px 12px;
-      display: flex; align-items: center; gap: 12px;
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 10px 0; min-height: 44px;
       border-bottom: 1px solid var(--border);
+      font-size: 14px; cursor: pointer;
+    }
+    .badge-teal {
+      font-size: 11px; font-weight: 700; color: var(--teal);
+      background: rgba(0,212,170,0.12); padding: 4px 8px; border-radius: 6px;
+    }
+    .cta-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+
+    /* Headers */
+    .screen-header {
+      flex-shrink: 0; height: 56px; padding: 0 12px;
+      display: flex; align-items: center; gap: 10px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
     }
     .back-btn {
-      width: 36px; height: 36px; border-radius: 11px;
-      border: 1px solid var(--border);
-      background: rgba(255, 255, 255, 0.04);
-      color: #fff; font-size: 18px; cursor: pointer;
+      width: 44px; height: 44px; border-radius: 12px;
+      border: 1px solid var(--border); background: var(--surface);
+      color: var(--text); font-size: 20px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
     }
-    .screen-title { font-weight: 600; font-size: 15px; }
-    .scroll-body { flex: 1; overflow-y: auto; padding: 14px 16px 20px; }
-    .scroll-body.rel { position: relative; }
+    .screen-title { font-weight: 600; font-size: 16px; }
 
+    .scroll-body { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 14px 16px 20px; }
     .btn {
-      display: block; width: 100%;
-      padding: 13px 16px; border-radius: 13px;
-      font-weight: 700; font-size: 14px;
+      display: flex; align-items: center; justify-content: center;
+      width: 100%; min-height: 48px; padding: 12px 16px;
+      border-radius: 12px; font-weight: 700; font-size: 15px;
       border: none; cursor: pointer; font-family: inherit;
-      transition: transform 0.15s, opacity 0.15s;
     }
-    .btn:active { transform: scale(0.98); }
+    .btn:active { opacity: 0.9; transform: scale(0.98); }
     .btn-teal { background: var(--teal); color: var(--bg); }
     .btn-outline {
-      background: transparent; color: #fff;
-      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: transparent; color: var(--teal);
+      border: 1px solid var(--teal);
     }
-    .btn-amber { background: var(--amber); color: var(--bg); font-size: 15px; padding: 15px; }
+    .btn-amber { background: var(--amber); color: var(--bg); font-size: 16px; }
+    .btn-success { background: #059669; color: #fff; pointer-events: none; }
 
-    .thumb-map { height: 150px; border-radius: 14px; overflow: hidden; margin-bottom: 14px; }
-    .spot-card { padding: 18px; text-align: center; margin-bottom: 14px; }
-    .spot-card .pin { font-size: 28px; }
-    .spot-card h3 { font-weight: 700; margin-top: 8px; font-size: 15px; }
-    .spot-card p { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+    .location-card { padding: 16px; margin-bottom: 14px; }
+    .location-card .addr { font-weight: 700; font-size: 15px; margin-top: 6px; }
+    .location-card .sub { font-size: 13px; color: var(--muted); margin-top: 4px; }
+    .thumb-map { height: 120px; border-radius: 12px; overflow: hidden; margin-top: 12px; }
 
     .option-btn {
-      width: 100%; text-align: left;
-      padding: 14px 16px; margin-bottom: 8px;
-      border-radius: 13px;
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid var(--border);
-      color: #fff; font-size: 14px; cursor: pointer; font-family: inherit;
+      width: 100%; text-align: left; min-height: 48px;
+      padding: 14px 16px; margin-bottom: 8px; border-radius: 12px;
+      background: var(--surface); border: 1px solid var(--border);
+      color: var(--text); font-size: 15px; cursor: pointer; font-family: inherit;
     }
-    .option-btn.selected {
-      border-color: var(--teal);
-      background: rgba(0, 212, 170, 0.1);
+    .option-btn.selected { border-color: var(--teal); background: rgba(0,212,170,0.08); }
+
+    .detect-card {
+      padding: 14px; margin: 14px 0;
+      display: flex; gap: 12px; align-items: flex-start;
+    }
+    .detect-card p { font-size: 13px; color: var(--muted); line-height: 1.5; margin-top: 4px; }
+    .detect-card .bt { font-size: 12px; color: var(--teal); margin-top: 8px; font-weight: 600; }
+
+    .success-card {
+      padding: 20px; text-align: center; margin-top: 14px;
+      display: none;
+    }
+    .success-card.show { display: block; }
+    .success-card h3 { font-size: 18px; font-weight: 700; margin-top: 8px; }
+    .odometer { font-size: 28px; font-weight: 900; color: var(--amber); margin: 10px 0; }
+    .ripple-ring {
+      position: absolute; inset: 0; pointer-events: none; z-index: 600;
+    }
+    .ripple-ring span {
+      position: absolute; left: 50%; top: 40%;
+      width: 20px; height: 20px; margin: -10px 0 0 -10px;
+      border: 2px solid var(--teal); border-radius: 50%;
+      animation: ripple-out 0.8s ease-out forwards;
+    }
+  .ripple-ring span:nth-child(2) { animation-delay: 0.15s; }
+  .ripple-ring span:nth-child(3) { animation-delay: 0.3s; }
+    @keyframes ripple-out {
+      0% { transform: scale(1); opacity: 0.8; }
+      100% { transform: scale(12); opacity: 0; }
     }
 
-    .banner-new {
-      padding: 14px; border-radius: 14px; margin-bottom: 14px;
-      background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(0, 212, 170, 0.15));
-      border: 1px solid rgba(59, 130, 246, 0.35);
-      animation: slide-in 0.45s ease;
+    .confetti { position: absolute; inset: 0; pointer-events: none; z-index: 700; overflow: hidden; }
+    .confetti i {
+      position: absolute; width: 8px; height: 8px; border-radius: 2px;
+      animation: confetti-fall 1.2s ease-out forwards;
     }
-    @keyframes slide-in {
-      from { transform: translateX(-16px); opacity: 0; }
-      to { transform: translateX(0); opacity: 1; }
+    @keyframes confetti-fall {
+      0% { transform: translateY(0) rotate(0); opacity: 1; }
+      100% { transform: translateY(400px) rotate(720deg); opacity: 0; }
+    }
+
+    #screen-3 { overflow-y: auto; }
+    #screen-3 .ai-panel { padding-bottom: 20px; }
+
+    /* Find screen */
+    .notify-banner {
+      background: var(--teal); color: var(--bg);
+      padding: 14px 16px; margin: 0 0 0;
+      animation: slide-down 0.4s ease;
+    }
+    @keyframes slide-down {
+      from { transform: translateY(-100%); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    .notify-banner p { font-size: 14px; font-weight: 600; }
+    .notify-banner .sub { font-size: 13px; opacity: 0.9; margin-top: 4px; }
+    .notify-banner .btn-white {
+      margin-top: 10px; background: #fff; color: var(--bg);
+      border: none; border-radius: 10px; padding: 10px;
+      font-weight: 700; width: 100%; min-height: 44px; cursor: pointer;
+      font-family: inherit; font-size: 14px;
+    }
+    .map-find { flex: 0 0 40%; min-height: 200px; position: relative; }
+    .ai-panel { padding: 14px 16px; }
+    .ai-panel .cap {
+      font-size: 12px; color: var(--muted); text-transform: uppercase;
+      letter-spacing: 0.06em; margin-bottom: 10px;
     }
     .prob-row { margin-bottom: 10px; }
-    .prob-head { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 5px; }
-    .prob-bar { height: 8px; border-radius: 4px; background: rgba(255,255,255,0.08); overflow: hidden; }
-    .prob-fill { height: 100%; background: var(--teal); border-radius: 4px; }
+    .prob-head { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px; }
+    .prob-bar { height: 8px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden; }
+    .prob-fill { height: 100%; border-radius: 4px; }
+    .urgency { font-size: 13px; color: var(--muted); text-align: center; margin-top: 8px; }
+    .urgency .dot { display: inline-block; width: 8px; height: 8px; background: var(--red); border-radius: 50%; margin-right: 6px; animation: pulse-red 1s infinite; }
 
-    .map-split { flex: 0 0 38%; position: relative; min-height: 180px; }
+    /* Nav screen */
+    .nav-map { flex: 0 0 55%; min-height: 0; position: relative; }
+    .nav-body { flex: 1; padding: 14px 16px; overflow-y: auto; }
+    .timer-card { padding: 18px; text-align: center; margin-bottom: 12px; }
+    .timer-card .lbl { font-size: 14px; color: var(--muted); }
+    .timer-big {
+      font-size: 48px; font-weight: 700; color: var(--teal);
+      font-family: ui-monospace, monospace; margin: 8px 0;
+    }
+    .turn-strip {
+      padding: 14px; display: flex; align-items: center; gap: 10px;
+      font-size: 14px;
+    }
+    .turn-strip .arrow { font-size: 24px; color: var(--teal); }
+    .cancel-link {
+      display: block; text-align: center; margin-top: 16px;
+      color: var(--muted); font-size: 13px; cursor: pointer;
+      min-height: 44px; line-height: 44px;
+    }
 
-    .nav-overlay-top {
-      position: absolute; top: 12px; left: 12px; right: 12px; z-index: 500;
-      padding: 14px;
-    }
-    .nav-overlay-bottom {
-      position: absolute; bottom: 12px; left: 12px; right: 12px; z-index: 500;
-      padding: 14px; text-align: center;
-    }
-    .timer-big { font-size: 44px; font-weight: 800; color: var(--teal); line-height: 1; }
-    .seeker-dot {
-      width: 12px; height: 12px; background: var(--blue);
-      border: 2px solid #fff; border-radius: 50%;
-      box-shadow: 0 0 10px rgba(59, 130, 246, 0.9);
-    }
-
-    .wallet-hero {
-      background: linear-gradient(135deg, var(--teal) 0%, #00a884 100%);
-      border-radius: 18px; padding: 22px;
-      color: var(--bg); margin-bottom: 16px;
-    }
-    .wallet-hero .bal { font-size: 52px; font-weight: 900; line-height: 1; }
-    .wallet-progress {
-      height: 8px; border-radius: 4px;
-      background: rgba(0,0,0,0.2); margin-top: 14px; overflow: hidden;
-    }
-    .wallet-progress div { height: 100%; width: 62%; background: rgba(0,0,0,0.35); border-radius: 4px; }
-    .tx-row {
-      display: flex; justify-content: space-between;
-      font-size: 12px; padding: 6px 0;
-    }
-    .reward-card {
-      padding: 14px; border-radius: 14px;
-      border: 1px solid var(--border);
-      background: rgba(255,255,255,0.02);
-      margin-bottom: 10px;
-    }
-    .reward-card h4 { font-size: 14px; font-weight: 600; }
-    .reward-card p { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
-    .reward-card .btn { margin-top: 10px; padding: 10px; font-size: 13px; }
-
-    .bottom-nav {
-      display: none;
-      flex-shrink: 0;
-      border-top: 1px solid var(--border);
-      background: rgba(10, 10, 15, 0.98);
-      padding: 8px 6px 12px;
-    }
-    .bottom-nav.visible { display: flex; }
-    .nav-item {
-      flex: 1; background: none; border: none;
-      color: rgba(255,255,255,0.4);
-      font-size: 10px; font-weight: 600;
-      cursor: pointer; padding: 4px; font-family: inherit;
-    }
-    .nav-item .ico { display: block; font-size: 20px; margin-bottom: 3px; }
-    .nav-item.active { color: var(--teal); }
-
-    .overlay-full {
-      position: absolute; inset: 0; z-index: 800;
-      background: rgba(10, 10, 15, 0.96);
+    .overlay-success {
+      position: absolute; inset: 0; z-index: 900;
+      background: rgba(10,10,15,0.97);
       display: none; flex-direction: column;
       align-items: center; justify-content: center;
       padding: 28px; text-align: center;
     }
-    .overlay-full.show { display: flex; }
+    .overlay-success.show { display: flex; }
+    .check-svg { width: 80px; height: 80px; }
+    .check-svg circle { fill: none; stroke: var(--teal); stroke-width: 3; stroke-dasharray: 240; stroke-dashoffset: 240; animation: draw-circle 0.8s ease forwards; }
+    .check-svg path { fill: none; stroke: var(--teal); stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 60; stroke-dashoffset: 60; animation: draw-check 0.5s 0.6s ease forwards; }
+    @keyframes draw-circle { to { stroke-dashoffset: 0; } }
+    @keyframes draw-check { to { stroke-dashoffset: 0; } }
+    .stats-row {
+      display: flex; gap: 16px; margin-top: 20px; flex-wrap: wrap; justify-content: center;
+    }
+    .stat { font-size: 13px; text-align: center; }
+    .stat b { display: block; font-size: 15px; margin-top: 4px; color: var(--teal); }
 
-    .confetti { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 700; }
-    .confetti i {
-      position: absolute; width: 8px; height: 8px; border-radius: 2px;
-      animation: fall 1.1s ease-out forwards;
+    /* Wallet */
+    .wallet-hero {
+      background: linear-gradient(135deg, var(--teal), #00a884);
+      border-radius: 1rem; padding: 22px; color: var(--bg); margin-bottom: 18px;
     }
-    @keyframes fall {
-      0% { transform: translateY(-10px) rotate(0); opacity: 1; }
-      100% { transform: translateY(380px) rotate(540deg); opacity: 0; }
+    .wallet-hero .bal { font-size: 56px; font-weight: 900; line-height: 1; }
+    .wallet-hero .lbl { font-weight: 600; opacity: 0.9; margin-top: 4px; }
+    .progress-thin {
+      height: 4px; background: rgba(0,0,0,0.2); border-radius: 2px;
+      margin-top: 14px; overflow: hidden;
     }
+    .progress-thin div { height: 100%; width: 76%; background: rgba(0,0,0,0.35); border-radius: 2px; }
+    .wallet-meta { font-size: 12px; margin-top: 10px; opacity: 0.85; }
+    .section-title { font-weight: 700; font-size: 15px; margin-bottom: 10px; }
+    .activity-row {
+      display: grid; grid-template-columns: 28px 1fr auto auto;
+      gap: 8px; align-items: center; padding: 10px 0;
+      border-bottom: 1px solid var(--border); font-size: 13px;
+    }
+    .activity-row .pts { font-weight: 700; font-size: 12px; }
+    .pts-teal { color: var(--teal); }
+    .pts-red { color: var(--red); }
+    .rewards-scroll {
+      display: flex; gap: 12px; overflow-x: auto;
+      padding-bottom: 8px; scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+    }
+    .rewards-scroll::-webkit-scrollbar { display: none; }
+    .reward-card {
+      flex: 0 0 75%; scroll-snap-align: start;
+      padding: 16px; min-height: 160px;
+      display: flex; flex-direction: column;
+    }
+    .reward-card h4 { font-size: 16px; font-weight: 700; margin-top: 8px; }
+    .reward-card p { font-size: 13px; color: var(--muted); margin-top: 4px; flex: 1; }
+    .reward-badge {
+      display: inline-block; font-size: 12px; font-weight: 700;
+      color: var(--bg); background: var(--amber);
+      padding: 4px 10px; border-radius: 8px; margin-top: 8px;
+    }
+    .reward-card .btn { margin-top: 12px; font-size: 14px; min-height: 44px; }
+
+    /* Bottom nav */
+    .bottom-nav {
+      flex-shrink: 0;
+      display: flex;
+      border-top: 1px solid var(--border);
+      background: rgba(10,10,15,0.98);
+      padding: 6px 4px calc(8px + env(safe-area-inset-bottom, 0px));
+    }
+    .nav-item {
+      flex: 1; background: none; border: none;
+      color: var(--muted); font-size: 11px; font-weight: 600;
+      cursor: pointer; padding: 8px 4px; min-height: 52px;
+      font-family: inherit;
+    }
+    .nav-item .ico { display: block; font-size: 22px; margin-bottom: 2px; }
+    .nav-item.active { color: var(--teal); }
 
     #qr-modal {
       position: fixed; inset: 0; z-index: 9999;
-      background: rgba(0,0,0,0.8);
+      background: rgba(0,0,0,0.85);
       display: none; align-items: center; justify-content: center;
       padding: 24px;
     }
     #qr-modal.show { display: flex; }
-    #qr-modal .modal-inner { padding: 24px; text-align: center; max-width: 300px; width: 100%; }
-    #qr-canvas { border-radius: 10px; background: #fff; display: block; margin: 0 auto; }
+    .modal-box {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 1rem; padding: 24px; text-align: center;
+      max-width: 300px; width: 100%;
+    }
+    #qr-canvas { display: block; margin: 16px auto; border-radius: 8px; }
+    .qr-expiry { color: var(--teal); font-weight: 600; margin-top: 12px; }
+    input, select, textarea { font-size: 16px; }
   </style>
 </head>
 <body>
-  <div class="page-wrap">
+  <div class="frame-wrap">
     <div class="phone">
-      <span class="demo-badge">Demo mode</span>
-
       <div class="screen-area">
 
-        <!-- ═══ SCREEN 0: Splash ═══ -->
+        <!-- SCREEN 0: Splash -->
         <section id="screen-0" class="screen active">
-          <div class="splash">
-            <p class="splash-logo">Ae!</p>
-            <p class="splash-tag">Neighborhood solidarity in action.</p>
-            <p class="splash-sub">Parking in Split — no circling, no concrete.</p>
-            <button type="button" class="btn btn-teal" style="margin-top:48px;max-width:260px" onclick="App.go(1)">Enter app →</button>
-          </div>
+          <p class="splash-logo">Ae!</p>
+          <p class="splash-tag">Split dišpet. Zero concrete.</p>
+          <p class="splash-sub">Crowdsourced parking for Split's neighborhoods.</p>
+          <div class="splash-dots"><span></span><span></span><span></span></div>
         </section>
 
-        <!-- ═══ SCREEN 1: Mapa ═══ -->
+        <!-- SCREEN 1: Map -->
         <section id="screen-1" class="screen">
           <div class="map-box">
             <div id="map-1" class="leaflet-map"></div>
             <header class="top-bar">
               <span class="logo-sm">Ae!</span>
               <div class="top-right">
-                <span class="polza-pill" id="polza-top">12 Polza</span>
-                <div class="avatar">H</div>
+                <div class="avatar">LK</div>
+                <span class="pts-badge" id="pts-top">47 pts</span>
               </div>
             </header>
-            <div class="ai-live"><span class="ai-dot"></span> AI ◉ LIVE</div>
+            <div class="ai-live"><span class="ai-dot"></span> ◉ AI LIVE</div>
             <div class="bottom-sheet">
+              <div class="sheet-handle"></div>
               <p class="sheet-title">Split 3 — 20:15h</p>
-              <p class="sheet-sub">6/7 spots occupied</p>
-              <div class="occ-bar"><div class="occ-fill"></div></div>
-              <div class="street-row"><span>Ul. Matice Hrvatske</span><span style="color:var(--teal)">✅ 1 free</span></div>
-              <div class="street-row"><span>Ul. Domovinskog rata</span><span style="color:var(--danger)">🔴 full</span></div>
-              <div class="street-row"><span>Šoltanska ul.</span><span style="color:var(--danger)">🔴 full</span></div>
+              <p class="occ-label">6 of 7 spots taken</p>
+              <div class="occ-bar"><div class="occ-red"></div><div class="occ-teal"></div></div>
+              <div class="street-row" onclick="App.go(3)">
+                <span>✅ Matice Hrvatske</span>
+                <span class="badge-teal">1 available</span>
+              </div>
+              <div class="street-row"><span>🔴 Domovinskog rata</span><span style="color:var(--muted)">Full</span></div>
+              <div class="street-row"><span>🔴 Šoltanska ul.</span><span style="color:var(--muted)">Full</span></div>
               <div class="cta-row">
-                <button type="button" class="btn btn-teal" onclick="App.go(2)">🚗 I'm leaving!</button>
-                <button type="button" class="btn btn-outline" onclick="App.go(3)">🔍 Find a spot</button>
+                <button type="button" class="btn btn-teal" onclick="App.go(2)">🚗 I'm Leaving</button>
+                <button type="button" class="btn btn-outline" onclick="App.go(3)">🔍 Find a Misto</button>
               </div>
             </div>
           </div>
         </section>
 
-        <!-- ═══ SCREEN 2: Odlazim ═══ -->
+        <!-- SCREEN 2: Leaving -->
         <section id="screen-2" class="screen">
           <header class="screen-header">
-            <button type="button" class="back-btn" onclick="App.go(1)">←</button>
-            <span class="screen-title">Leaving my spot</span>
+            <button type="button" class="back-btn" onclick="App.go(1)" aria-label="Back">←</button>
+            <span class="screen-title">Share My Spot</span>
           </header>
-          <div class="scroll-body rel">
-            <div class="thumb-map"><div id="map-2" class="leaflet-map"></div></div>
-            <div class="glass spot-card">
-              <p class="pin">📍</p>
-              <h3>Ulica Matice Hrvatske 14</h3>
-              <p>Your current spot</p>
+          <div class="scroll-body" style="position:relative">
+            <div class="card location-card">
+              <span>📍</span>
+              <p class="addr">Matice Hrvatske 14, Split 3</p>
+              <p class="sub">Your current parking spot</p>
+              <div class="thumb-map"><div id="map-2" class="leaflet-map"></div></div>
             </div>
-            <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px">When are you leaving?</p>
-            <button type="button" class="option-btn selected" onclick="App.selectOpt(this)">⏱ Leaving now (&lt; 2 min)</button>
-            <button type="button" class="option-btn" onclick="App.selectOpt(this)">⏳ Leaving in ~5 min</button>
-            <button type="button" class="option-btn" onclick="App.selectOpt(this)">📅 Leaving in 15+ min</button>
-            <button type="button" class="btn btn-teal" style="margin-top:12px" onclick="App.publish()">POST SPOT 🎯</button>
-          </div>
-          <div id="confetti" class="confetti"></div>
-          <div id="publish-ok" class="overlay-full">
-            <p style="font-size:48px">✅</p>
-            <h2 style="font-size:20px;font-weight:700;margin-top:12px">Spot posted!</h2>
-            <p style="color:var(--teal);margin-top:8px;font-weight:600">You earned 10 Split-Polza points</p>
-            <p style="font-size:13px;color:var(--text-muted);margin-top:6px">Balance: <span id="saldo-after">22</span> Polza</p>
-            <button type="button" class="btn btn-teal" style="margin-top:28px;max-width:240px" onclick="App.go(1)">Back to map</button>
+            <button type="button" class="option-btn selected" data-opt onclick="App.selectOpt(this)">⚡ Leaving now (&lt; 2 min)</button>
+            <button type="button" class="option-btn" data-opt onclick="App.selectOpt(this)">⏱ Leaving in ~5 minutes</button>
+            <button type="button" class="option-btn" data-opt onclick="App.selectOpt(this)">📅 Leaving in 15+ min</button>
+            <div class="card detect-card">
+              <span style="font-size:20px">⚡</span>
+              <div>
+                <strong style="font-size:14px">Auto-detection is ON</strong>
+                <p>When you start driving, Ae! will release your spot automatically. No tap needed.</p>
+                <p class="bt">Bluetooth connected to: Peugeot 308</p>
+              </div>
+            </div>
+            <button type="button" id="share-btn" class="btn btn-teal" onclick="App.shareSpot()">SHARE MY MISTO 🎯</button>
+            <div id="share-success" class="card success-card">
+              <p style="font-size:40px">✅</p>
+              <h3>Spot shared!</h3>
+              <p style="color:var(--teal);font-weight:600;margin-top:6px">+10 Split-Polza points earned</p>
+              <p class="odometer" id="points-odo">47</p>
+              <button type="button" class="btn btn-teal" onclick="App.go(1)">Back to Map</button>
+            </div>
+            <div id="confetti" class="confetti"></div>
+            <div id="ripple-box" class="ripple-ring" style="display:none"></div>
           </div>
         </section>
 
-        <!-- ═══ SCREEN 3: Nađi misto ═══ -->
+        <!-- SCREEN 3: Find -->
         <section id="screen-3" class="screen">
           <header class="screen-header">
-            <button type="button" class="back-btn" onclick="App.go(1)">←</button>
-            <span class="screen-title">Find parking</span>
+            <button type="button" class="back-btn" onclick="App.go(1)" aria-label="Back">←</button>
+            <span class="screen-title">Find Parking</span>
           </header>
-          <div class="map-split"><div id="map-3" class="leaflet-map"></div></div>
-          <div class="scroll-body">
-            <div class="banner-new">
-              <p style="font-weight:700;font-size:14px">🔔 NEW!</p>
-              <p style="font-size:13px;margin-top:6px">Free spot 180m from you!</p>
-              <p style="font-size:12px;color:var(--text-muted);margin-top:4px">Ul. Matice Hrvatske 14 • just posted</p>
-              <p style="font-size:12px;color:var(--amber);font-weight:600;margin-top:8px">⏱ 2 users viewing this spot</p>
+          <div class="notify-banner">
+            <p>🔔 New spot just opened 180m away!</p>
+            <p class="sub">Matice Hrvatske 14 · just now</p>
+            <button type="button" class="btn-white" onclick="App.go(4)">Claim it →</button>
+          </div>
+          <div class="map-find"><div id="map-3" class="leaflet-map"></div></div>
+          <div class="ai-panel">
+            <p class="cap">AI Prediction — Split 3</p>
+            <div class="prob-row">
+              <div class="prob-head"><span>Matice Hrvatske</span><span style="color:var(--teal)">78% · 1 available</span></div>
+              <div class="prob-bar"><div class="prob-fill" style="width:78%;background:var(--teal)"></div></div>
             </div>
-            <p style="font-weight:700;font-size:14px;margin-bottom:10px">AI Prediction — Split 3</p>
-            <div class="glass" style="padding:12px;margin-bottom:10px">
-              <div class="prob-row">
-                <div class="prob-head"><span>Matice Hrvatske</span><span style="color:var(--teal)">78% · 1 free</span></div>
-                <div class="prob-bar"><div class="prob-fill" style="width:78%"></div></div>
-              </div>
-              <div class="prob-row">
-                <div class="prob-head"><span>Domovinskog rata</span><span>34%</span></div>
-                <div class="prob-bar"><div class="prob-fill" style="width:34%;background:var(--amber)"></div></div>
-              </div>
-              <div class="prob-row" style="margin-bottom:0">
-                <div class="prob-head"><span>Šoltanska</span><span style="color:var(--danger)">11%</span></div>
-                <div class="prob-bar"><div class="prob-fill" style="width:11%;background:var(--danger)"></div></div>
-              </div>
+            <div class="prob-row">
+              <div class="prob-head"><span>Domovinskog rata</span><span style="color:var(--amber)">34%</span></div>
+              <div class="prob-bar"><div class="prob-fill" style="width:34%;background:var(--amber)"></div></div>
             </div>
-            <p style="font-size:10px;color:var(--text-muted);text-align:center;margin-bottom:14px">Based on 2,847 trips in this neighborhood</p>
-            <button type="button" class="btn btn-amber" onclick="App.go(4)">RESERVE → 5 Polza</button>
+            <div class="prob-row">
+              <div class="prob-head"><span>Šoltanska ul.</span><span style="color:var(--red)">11%</span></div>
+              <div class="prob-bar"><div class="prob-fill" style="width:11%;background:var(--red)"></div></div>
+            </div>
+            <p style="font-size:11px;color:var(--muted);margin:10px 0 14px">Based on 2,847 trips analyzed in this area</p>
+            <button type="button" class="btn btn-amber" onclick="App.go(4)">CLAIM THIS MISTO — 5 pts</button>
+            <p class="urgency"><span class="dot"></span>2 people are looking at this spot</p>
           </div>
         </section>
 
-        <!-- ═══ SCREEN 4: Navigacija ═══ -->
+        <!-- SCREEN 4: Navigation -->
         <section id="screen-4" class="screen">
-          <div class="map-box">
-            <div id="map-4" class="leaflet-map"></div>
-            <div class="nav-overlay-top glass">
-              <p style="font-size:11px;color:var(--text-muted)">🎯 Reserved! Arriving in:</p>
+          <header class="screen-header">
+            <span class="screen-title" style="margin-left:4px">Navigating to Misto</span>
+          </header>
+          <div class="nav-map"><div id="map-4" class="leaflet-map"></div></div>
+          <div class="nav-body">
+            <div class="card timer-card">
+              <p class="lbl">🎯 Reserved! Arriving in:</p>
               <p class="timer-big" id="nav-timer">1:47</p>
-              <p style="font-size:12px;font-weight:600;margin-top:4px">Ul. Matice Hrvatske 14</p>
+              <p style="font-weight:600;font-size:14px">Matice Hrvatske 14, Split 3</p>
             </div>
-            <div class="nav-overlay-bottom glass">
-              <p style="font-weight:600;font-size:13px">📍 Follow route ↓</p>
-              <p style="font-size:11px;color:var(--text-muted);margin-top:6px" id="turn-hint">Turn left onto Ul. Domovinskog rata</p>
+            <div class="card turn-strip">
+              <span class="arrow">↑</span>
+              <span>Head north on Ul. Domovinskog rata</span>
             </div>
+            <a class="cancel-link" onclick="App.go(1)">Cancel reservation</a>
           </div>
-          <div id="park-ok" class="overlay-full">
-            <p style="font-size:48px">✅</p>
-            <h2 style="font-size:20px;font-weight:700;margin-top:12px">You're parked!</h2>
-            <p style="color:var(--text-muted);font-size:14px;margin-top:8px">You saved ~35 min of circling</p>
-            <p style="color:var(--amber);font-size:13px;font-weight:600;margin-top:10px">-5 Polza spent | +2 Polza bonus (fast arrival)</p>
-            <button type="button" class="btn btn-teal" style="margin-top:28px;max-width:240px" onclick="App.finishNav()">Go back</button>
+          <div id="park-success" class="overlay-success">
+            <svg class="check-svg" viewBox="0 0 80 80">
+              <circle cx="40" cy="40" r="36" />
+              <path d="M24 42 L36 54 L58 28" />
+            </svg>
+            <h2 style="font-size:22px;font-weight:700;margin-top:16px">You parked! 🎉</h2>
+            <p style="color:var(--muted);margin-top:8px;font-size:15px">Saved ~35 minutes of circling</p>
+            <div class="stats-row">
+              <div class="stat">CO₂<br><b>🟢 -0.4kg</b></div>
+              <div class="stat">Time<br><b>🟢 -35min</b></div>
+              <div class="stat">Cost<br><b>🟢 -5 pts</b></div>
+            </div>
+            <button type="button" class="btn btn-teal" style="margin-top:28px;max-width:260px" onclick="App.finishNav()">Back to Map</button>
           </div>
         </section>
 
-        <!-- ═══ SCREEN 5: Split-Polza ═══ -->
+        <!-- SCREEN 5: Wallet -->
         <section id="screen-5" class="screen">
           <header class="screen-header">
-            <button type="button" class="back-btn" onclick="App.go(1)">←</button>
-            <span class="screen-title">💰 Split-Polza Wallet</span>
+            <span class="screen-title" style="margin-left:4px">💰 Split-Polza</span>
           </header>
           <div class="scroll-body">
             <div class="wallet-hero">
               <p class="bal" id="wallet-bal">47</p>
-              <p style="font-weight:600;opacity:0.85">Split-Polza points</p>
-              <div class="wallet-progress"><div></div></div>
-              <p style="font-size:11px;margin-top:8px;opacity:0.75">3 more points to next reward</p>
+              <p class="lbl">Split-Polza points</p>
+              <div class="progress-thin"><div></div></div>
+              <p class="wallet-meta">13 pts to next reward</p>
+              <p class="wallet-meta">Earned this week: +28 pts</p>
             </div>
-            <p style="font-weight:700;font-size:14px;margin-bottom:10px">Activity</p>
-            <div class="glass" style="padding:14px;margin-bottom:16px">
-              <div class="tx-row"><span>✅ +10 Spot posted</span><span style="color:var(--text-muted)">Today 20:15</span></div>
-              <div class="tx-row"><span>🔍 -5 Reservation</span><span style="color:var(--text-muted)">Today 20:13</span></div>
-              <div class="tx-row"><span>✅ +10 Spot posted</span><span style="color:var(--text-muted)">Yesterday 18:44</span></div>
-              <div class="tx-row"><span>🚶 +8 Digital Steward</span><span style="color:var(--text-muted)">Tue 09:22</span></div>
+            <p class="section-title">Recent Activity</p>
+            <div class="card" style="padding:4px 14px;margin-bottom:18px">
+              <div class="activity-row">
+                <span>✅</span><span>Spot shared</span><span style="color:var(--muted)">Today 20:15</span><span class="pts pts-teal">+10 pts</span>
+              </div>
+              <div class="activity-row">
+                <span>🔍</span><span>Spot reserved</span><span style="color:var(--muted)">Today 20:13</span><span class="pts pts-red">-5 pts</span>
+              </div>
+              <div class="activity-row">
+                <span>✅</span><span>Spot shared</span><span style="color:var(--muted)">Yesterday</span><span class="pts pts-teal">+10 pts</span>
+              </div>
+              <div class="activity-row" style="border:none">
+                <span>🚶</span><span>Digitalni Redar report</span><span style="color:var(--muted)">Tue 09:22</span><span class="pts pts-teal">+8 pts</span>
+              </div>
             </div>
-            <p style="font-weight:700;font-size:14px;margin-bottom:10px">Rewards</p>
-            <div class="reward-card">
-              <h4>☕ Coffee — Zlatna Vrata Café</h4>
-              <p>15 Polza • 0.3 km</p>
-              <button type="button" class="btn btn-outline" onclick="App.openQR()">QR Code →</button>
-            </div>
-            <div class="reward-card">
-              <h4>🚌 Transit pass (1 ride)</h4>
-              <p>20 Polza</p>
-              <button type="button" class="btn btn-outline">Activate →</button>
-            </div>
-            <div class="reward-card">
-              <h4>🍕 Pizza — Bruna Pizzeria</h4>
-              <p>35 Polza • 0.8 km</p>
-              <button type="button" class="btn btn-outline" onclick="App.openQR()">QR Code →</button>
+            <p class="section-title">Redeem Points</p>
+            <div class="rewards-scroll">
+              <div class="card reward-card">
+                <span style="font-size:28px">☕</span>
+                <h4>Free Coffee</h4>
+                <p>Kafić Zlatna Vrata · 0.3km</p>
+                <span class="reward-badge">15 pts</span>
+                <button type="button" class="btn btn-outline" onclick="App.openQR('Kafić Zlatna Vrata')">Get QR Code →</button>
+              </div>
+              <div class="card reward-card">
+                <span style="font-size:28px">🚌</span>
+                <h4>Promet Bus Ticket</h4>
+                <p>1 ride, any line</p>
+                <span class="reward-badge">20 pts</span>
+                <button type="button" class="btn btn-outline">Activate →</button>
+              </div>
+              <div class="card reward-card">
+                <span style="font-size:28px">🍕</span>
+                <h4>Pizza Slice</h4>
+                <p>Bruna Pizzeria · 0.8km</p>
+                <span class="reward-badge">35 pts</span>
+                <button type="button" class="btn btn-outline" onclick="App.openQR('Bruna Pizzeria')">Get QR Code →</button>
+              </div>
             </div>
           </div>
         </section>
@@ -514,68 +641,54 @@
       </div>
 
       <nav class="bottom-nav" id="bottom-nav">
-        <button type="button" class="nav-item active" data-nav="1" onclick="App.go(1)"><span class="ico">🗺</span>Map</button>
+        <button type="button" class="nav-item" data-nav="1" onclick="App.go(1)"><span class="ico">🗺</span>Map</button>
         <button type="button" class="nav-item" data-nav="2" onclick="App.go(2)"><span class="ico">🚗</span>Leaving</button>
         <button type="button" class="nav-item" data-nav="3" onclick="App.go(3)"><span class="ico">🔍</span>Find</button>
-        <button type="button" class="nav-item" data-nav="5" onclick="App.go(5)"><span class="ico">💰</span>Polza</button>
+        <button type="button" class="nav-item" data-nav="5" onclick="App.go(5)"><span class="ico">💰</span>Wallet</button>
       </nav>
     </div>
   </div>
 
   <div id="qr-modal">
-    <div class="glass modal-inner">
-      <canvas id="qr-canvas" width="180" height="180"></canvas>
-      <p style="font-weight:700;margin-top:16px">Show cashier</p>
-      <p style="color:var(--teal);font-size:14px;margin-top:8px" id="qr-expiry">Expires in 4:59</p>
+    <div class="modal-box">
+      <p style="font-weight:700;font-size:16px">Show this to the cashier</p>
+      <p id="qr-merchant" style="color:var(--muted);font-size:13px;margin-top:6px"></p>
+      <canvas id="qr-canvas" width="200" height="200"></canvas>
+      <p class="qr-expiry" id="qr-expiry">Expires in 4:59</p>
       <button type="button" class="btn btn-outline" style="margin-top:16px" onclick="App.closeQR()">Close</button>
     </div>
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
   <script>
-  /* ── Shared utilities ── */
   function playDing() {
     try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      [523, 659].forEach(function (freq, i) {
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain); gain.connect(ctx.destination);
-        osc.frequency.value = freq;
-        osc.type = 'sine';
-        gain.gain.setValueAtTime(0.3, ctx.currentTime + i * 0.15);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.15 + 0.8);
-        osc.start(ctx.currentTime + i * 0.15);
-        osc.stop(ctx.currentTime + i * 0.15 + 0.8);
-      });
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [523, 659].forEach((freq, i) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.frequency.value = freq; o.type = 'sine';
+      g.gain.setValueAtTime(0.3, ctx.currentTime + i * 0.15);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.15 + 0.8);
+      o.start(ctx.currentTime + i * 0.15);
+      o.stop(ctx.currentTime + i * 0.15 + 0.8);
+    });
     } catch (e) {}
   }
 
-  function generateFakeQR(canvasId) {
-    const canvas = document.getElementById(canvasId);
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    const size = 29;
-    const cell = canvas.width / size;
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    [[0,0],[0,size-7],[size-7,0]].forEach(function (rc) {
-      const r = rc[0], c = rc[1];
+  function generateFakeQR(canvas) {
+    const ctx = canvas.getContext('2d'), s = 29, c = canvas.width / s;
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+    [[0,0],[0,s-7],[s-7,0]].forEach(([r, col]) => {
       ctx.fillStyle = '#000';
-      ctx.fillRect(c * cell, r * cell, 7 * cell, 7 * cell);
+      ctx.fillRect(col * c, r * c, 7 * c, 7 * c);
       ctx.fillStyle = '#fff';
-      ctx.fillRect((c + 1) * cell, (r + 1) * cell, 5 * cell, 5 * cell);
+      ctx.fillRect((col + 1) * c, (r + 1) * c, 5 * c, 5 * c);
       ctx.fillStyle = '#000';
-      ctx.fillRect((c + 2) * cell, (r + 2) * cell, 3 * cell, 3 * cell);
+      ctx.fillRect((col + 2) * c, (r + 2) * c, 3 * c, 3 * c);
     });
-    for (let r = 0; r < size; r++) {
-      for (let c = 0; c < size; c++) {
-        if (Math.random() > 0.5) {
-          ctx.fillStyle = '#000';
-          ctx.fillRect(c * cell, r * cell, cell, cell);
-        }
-      }
-    }
+    for (let r = 0; r < s; r++) for (let col = 0; col < s; col++)
+      if (Math.random() > 0.5) { ctx.fillStyle = '#000'; ctx.fillRect(col * c, r * c, c, c); }
   }
 
   const PARKING = [
@@ -589,31 +702,43 @@
 
   const App = {
     screen: 0,
-    polza: 12,
+    points: 47,
     maps: {},
     navTimer: null,
+    navDemoTimer: null,
     seekerAnim: null,
     qrTimer: null,
+    shareTimer: null,
 
     go(n) {
       this.screen = n;
-      document.querySelectorAll('.screen').forEach(function (s) { s.classList.remove('active'); });
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
       document.getElementById('screen-' + n).classList.add('active');
-      document.querySelectorAll('.nav-item').forEach(function (b) {
+      document.querySelectorAll('.nav-item').forEach(b => {
         b.classList.toggle('active', parseInt(b.dataset.nav, 10) === n);
       });
-      document.getElementById('bottom-nav').classList.toggle('visible', n !== 0);
+      document.getElementById('bottom-nav').style.display = n === 0 ? 'none' : 'flex';
 
-      if (n === 1) this.initMap('map-1', { green: FREE });
-      if (n === 2) this.initMap('map-2', { zoom: 17, highlight: true });
-      if (n === 3) this.initMap('map-3', { green: FREE });
+      if (n === 1) {
+        this.destroyMap('map-1');
+        this.initMap('map-1', { pins: true, popup: true });
+      }
+      if (n === 2) {
+        this.resetShare();
+        this.destroyMap('map-2');
+        this.initMap('map-2', { highlight: true });
+      }
+      if (n === 3) {
+        this.destroyMap('map-3');
+        this.initMap('map-3', { pins: true, route: true, hardGreen: true });
+      }
       if (n === 4) this.startNav();
-      if (n === 5) this.updatePolza();
+      if (n === 5) this.updatePoints();
     },
 
-    updatePolza() {
-      document.getElementById('polza-top').textContent = this.polza + ' Polza';
-      document.getElementById('wallet-bal').textContent = String(47 + (this.polza - 12));
+    updatePoints() {
+      document.getElementById('pts-top').textContent = this.points + ' pts';
+      document.getElementById('wallet-bal').textContent = this.points;
     },
 
     lockMap(map) {
@@ -626,25 +751,34 @@
       if (map.tap) map.tap.disable();
     },
 
-    pinIcon(green) {
+    pinIcon(green, hard) {
       return L.divIcon({
         className: 'pin-wrap',
-        html: '<div class="' + (green ? 'pin-green' : 'pin-red') + '"></div>',
-        iconSize: green ? [16, 16] : [14, 14],
-        iconAnchor: green ? [8, 8] : [7, 7]
+        html: '<div class="' + (green ? 'pin-green' + (hard ? ' hard' : '') : 'pin-red') + '"></div>',
+        iconSize: green ? [18, 18] : [14, 14],
+        iconAnchor: green ? [9, 9] : [7, 7]
       });
     },
 
-    addPins(map, greenIdx) {
-      PARKING.forEach(function (c, i) {
-        L.marker(c, { icon: App.pinIcon(i === greenIdx), interactive: false }).addTo(map);
+    addPins(map, greenIdx, interactive, hard) {
+      PARKING.forEach((coords, i) => {
+        const isFree = i === greenIdx;
+        const m = L.marker(coords, {
+          icon: this.pinIcon(isFree, hard && isFree),
+          interactive: !!interactive && isFree
+        }).addTo(map);
+        if (interactive && isFree) {
+          m.bindPopup(
+            '<strong>✅ Matice Hrvatske 14</strong><br><span style="color:#6B7280;font-size:12px">Just opened · 0 claims</span>' +
+            '<button class="popup-btn" onclick="App.go(3)">Claim this Misto →</button>'
+          );
+        }
       });
     },
 
-    initMap(id, opts) {
-      opts = opts || {};
+    initMap(id, opts = {}) {
       if (this.maps[id]) {
-        setTimeout(function () { App.maps[id].invalidateSize(); }, 80);
+        setTimeout(() => this.maps[id].invalidateSize(), 100);
         return this.maps[id];
       }
       const map = L.map(id, {
@@ -655,52 +789,122 @@
       });
       L.tileLayer(TILE, { subdomains: 'abcd', maxZoom: 20 }).addTo(map);
       this.lockMap(map);
-      if (opts.green !== undefined) this.addPins(map, opts.green);
+
+      if (opts.pins) this.addPins(map, FREE, opts.popup);
       if (opts.highlight) {
         L.circle(PARKING[FREE], {
-          radius: 45, color: '#00D4AA', fillColor: '#00D4AA',
-          fillOpacity: 0.12, weight: 2
+          radius: 40, color: '#00D4AA', fillColor: '#00D4AA',
+          fillOpacity: 0.15, weight: 2
         }).addTo(map);
-        this.addPins(map, -1);
+        L.marker(PARKING[FREE], { icon: this.pinIcon(true, false), interactive: false }).addTo(map);
+        map.setView(PARKING[FREE], 17);
       }
+      if (opts.route) {
+        this.addPins(map, FREE, false, opts.hardGreen);
+        const route = [];
+        for (let i = 0; i <= 20; i++) {
+          const f = i / 20;
+          route.push([
+            SEEKER[0] + (PARKING[FREE][0] - SEEKER[0]) * f,
+            SEEKER[1] + (PARKING[FREE][1] - SEEKER[1]) * f
+          ]);
+        }
+        L.polyline(route, { color: '#3B82F6', weight: 3, dashArray: '8,10' }).addTo(map);
+        L.marker(SEEKER, {
+          icon: L.divIcon({
+            className: 'seeker-wrap',
+            html: '<div class="seeker-dot"></div>',
+            iconSize: [14, 14], iconAnchor: [7, 7]
+          }),
+          interactive: false
+        }).addTo(map);
+      }
+
       this.maps[id] = map;
       return map;
     },
 
     selectOpt(btn) {
-      document.querySelectorAll('.option-btn').forEach(function (b) { b.classList.remove('selected'); });
+      document.querySelectorAll('[data-opt]').forEach(b => b.classList.remove('selected'));
       btn.classList.add('selected');
+    },
+
+    resetShare() {
+      document.getElementById('share-btn').style.display = 'flex';
+      document.getElementById('share-btn').className = 'btn btn-teal';
+      document.getElementById('share-btn').textContent = 'SHARE MY MISTO 🎯';
+      document.getElementById('share-success').classList.remove('show');
+      document.getElementById('confetti').innerHTML = '';
+      if (this.shareTimer) clearTimeout(this.shareTimer);
     },
 
     confetti() {
       const box = document.getElementById('confetti');
       box.innerHTML = '';
-      const cols = ['#00D4AA', '#3B82F6', '#F59E0B', '#FF4444', '#fff'];
-      for (let i = 0; i < 36; i++) {
+      const cols = ['#00D4AA', '#F59E0B', '#3B82F6', '#FF4444', '#fff'];
+      for (let i = 0; i < 40; i++) {
         const el = document.createElement('i');
         el.style.left = Math.random() * 100 + '%';
+        el.style.top = Math.random() * 30 + '%';
         el.style.background = cols[i % cols.length];
-        el.style.animationDelay = Math.random() * 0.25 + 's';
+        el.style.animationDelay = (Math.random() * 0.3) + 's';
         box.appendChild(el);
       }
     },
 
-    publish() {
+    animateOdometer(from, to) {
+      const el = document.getElementById('points-odo');
+      const start = performance.now();
+      const dur = 900;
+      const tick = now => {
+        const p = Math.min(1, (now - start) / dur);
+        el.textContent = Math.round(from + (to - from) * p);
+        if (p < 1) requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    },
+
+    shareSpot() {
+      const btn = document.getElementById('share-btn');
+      btn.className = 'btn btn-success';
+      btn.textContent = '✓ Shared!';
       this.confetti();
       playDing();
-      this.polza += 10;
-      document.getElementById('saldo-after').textContent = this.polza;
-      this.updatePolza();
-      document.getElementById('publish-ok').classList.add('show');
+      const from = this.points;
+      this.points += 10;
+      this.updatePoints();
+      setTimeout(() => {
+        btn.style.display = 'none';
+        document.getElementById('share-success').classList.add('show');
+        this.animateOdometer(from, this.points);
+        playDing();
+        this.shareTimer = setTimeout(() => App.go(1), 2000);
+      }, 400);
+    },
+
+    destroyMap(id) {
+      if (this.maps[id]) {
+        this.maps[id].remove();
+        delete this.maps[id];
+      }
     },
 
     startNav() {
-      document.getElementById('park-ok').classList.remove('show');
+      document.getElementById('park-success').classList.remove('show');
+      this.destroyMap('map-4');
       const map = this.initMap('map-4', {});
-      this.addPins(map, FREE);
+      PARKING.forEach((coords, i) => {
+        L.marker(coords, { icon: this.pinIcon(i === FREE, i === FREE), interactive: false }).addTo(map);
+      });
+      if (FREE >= 0) {
+        L.circle(PARKING[FREE], {
+          radius: 35, color: '#00D4AA', fillColor: '#00D4AA',
+          fillOpacity: 0.2, weight: 2
+        }).addTo(map);
+      }
       const route = [];
-      for (let i = 0; i <= 24; i++) {
-        const f = i / 24;
+      for (let i = 0; i <= 30; i++) {
+        const f = i / 30;
         route.push([
           SEEKER[0] + (PARKING[FREE][0] - SEEKER[0]) * f,
           SEEKER[1] + (PARKING[FREE][1] - SEEKER[1]) * f
@@ -711,47 +915,65 @@
         icon: L.divIcon({
           className: 'seeker-wrap',
           html: '<div class="seeker-dot"></div>',
-          iconSize: [12, 12], iconAnchor: [6, 6]
+          iconSize: [14, 14], iconAnchor: [7, 7]
         })
       }).addTo(map);
+
       let t = 0;
       if (this.seekerAnim) cancelAnimationFrame(this.seekerAnim);
-      const move = function () {
-        t = Math.min(1, t + 0.0035);
+      const move = () => {
+        t = Math.min(1, t + 0.002);
         seeker.setLatLng(route[Math.floor(t * (route.length - 1))]);
-        if (t < 1) App.seekerAnim = requestAnimationFrame(move);
+        if (t < 1) this.seekerAnim = requestAnimationFrame(move);
       };
-      App.seekerAnim = requestAnimationFrame(move);
+      this.seekerAnim = requestAnimationFrame(move);
 
       let secs = 107;
       const el = document.getElementById('nav-timer');
       if (this.navTimer) clearInterval(this.navTimer);
-      this.navTimer = setInterval(function () {
+      if (this.navDemoTimer) clearTimeout(this.navDemoTimer);
+
+      this.navTimer = setInterval(() => {
         secs--;
-        el.textContent = Math.floor(secs / 60) + ':' + String(secs % 60).padStart(2, '0');
-        if (secs <= 90) document.getElementById('park-ok').classList.add('show');
-        if (secs <= 0) clearInterval(App.navTimer);
+        const m = Math.floor(secs / 60);
+        const s = secs % 60;
+        el.textContent = m + ':' + String(s).padStart(2, '0');
+        if (secs <= 0) this.showParkSuccess();
       }, 1000);
-      el.textContent = '1:47';
+
+      this.navDemoTimer = setTimeout(() => this.showParkSuccess(), 10000);
+    },
+
+    showParkSuccess() {
+      if (this.navTimer) clearInterval(this.navTimer);
+      if (this.navDemoTimer) clearTimeout(this.navDemoTimer);
+      document.getElementById('park-success').classList.add('show');
+      const svg = document.querySelector('#park-success .check-svg');
+      if (svg) {
+        svg.style.animation = 'none';
+        void svg.offsetWidth;
+      }
     },
 
     finishNav() {
-      this.polza = this.polza - 5 + 2;
-      this.updatePolza();
       if (this.navTimer) clearInterval(this.navTimer);
+      if (this.navDemoTimer) clearTimeout(this.navDemoTimer);
+      if (this.seekerAnim) cancelAnimationFrame(this.seekerAnim);
       this.go(1);
     },
 
-    openQR() {
-      generateFakeQR('qr-canvas');
+    openQR(merchant) {
+      const canvas = document.getElementById('qr-canvas');
+      generateFakeQR(canvas);
+      document.getElementById('qr-merchant').textContent = merchant;
       document.getElementById('qr-modal').classList.add('show');
       let s = 299;
       const exp = document.getElementById('qr-expiry');
       if (this.qrTimer) clearInterval(this.qrTimer);
-      this.qrTimer = setInterval(function () {
+      this.qrTimer = setInterval(() => {
         s--;
         exp.textContent = 'Expires in ' + Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
-        if (s <= 0) clearInterval(App.qrTimer);
+        if (s <= 0) clearInterval(this.qrTimer);
       }, 1000);
     },
 
@@ -761,7 +983,9 @@
     }
   };
 
-  setTimeout(function () { if (App.screen === 0) App.go(1); }, 2500);
+  document.getElementById('screen-0').addEventListener('click', () => App.go(1));
+  setTimeout(() => { if (App.screen === 0) App.go(1); }, 2500);
+  document.getElementById('bottom-nav').style.display = 'none';
   </script>
 </body>
 </html>
