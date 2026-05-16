@@ -4,10 +4,14 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Ae! — Split Parking</title>
+  <link rel="icon" href="favicon.ico" sizes="any" />
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
   <style>
     :root {
       --bg: #0a0a0f;
@@ -19,6 +23,64 @@
       --text: #F0F0F0;
       --muted: #6B7280;
       --border: rgba(255,255,255,0.08);
+      --scrollbar-track: rgba(255, 255, 255, 0.06);
+      --scrollbar-thumb: rgba(0, 212, 170, 0.55);
+      --scrollbar-thumb-hover: #00D4AA;
+    }
+    /* Scrollbars — dark track, teal thumb (Firefox + WebKit) */
+    .phone,
+    #add-spot-modal,
+    #qr-modal {
+      scrollbar-width: thin;
+      scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+    }
+    .phone *::-webkit-scrollbar,
+    #add-spot-modal *::-webkit-scrollbar,
+    #qr-modal *::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .phone *::-webkit-scrollbar-track,
+    #add-spot-modal *::-webkit-scrollbar-track,
+    #qr-modal *::-webkit-scrollbar-track {
+      background: var(--scrollbar-track);
+      border-radius: 100px;
+    }
+    .phone *::-webkit-scrollbar-thumb,
+    #add-spot-modal *::-webkit-scrollbar-thumb,
+    #qr-modal *::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, rgba(0, 212, 170, 0.75), rgba(0, 168, 138, 0.45));
+      border-radius: 100px;
+      border: 1px solid rgba(0, 212, 170, 0.2);
+      min-height: 28px;
+    }
+    .phone *::-webkit-scrollbar-thumb:hover,
+    #add-spot-modal *::-webkit-scrollbar-thumb:hover,
+    #qr-modal *::-webkit-scrollbar-thumb:hover {
+      background: var(--scrollbar-thumb-hover);
+      border-color: rgba(0, 212, 170, 0.45);
+    }
+    .phone *::-webkit-scrollbar-thumb:active,
+    #add-spot-modal *::-webkit-scrollbar-thumb:active,
+    #qr-modal *::-webkit-scrollbar-thumb:active {
+      background: #00eec4;
+    }
+    .phone *::-webkit-scrollbar-corner,
+    #add-spot-modal *::-webkit-scrollbar-corner,
+    #qr-modal *::-webkit-scrollbar-corner {
+      background: transparent;
+    }
+    .rewards-scroll::-webkit-scrollbar {
+      height: 5px;
+    }
+    .rewards-scroll::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.04);
+      border-radius: 100px;
+      margin: 0 2px;
+    }
+    .rewards-scroll::-webkit-scrollbar-thumb {
+      min-height: 0;
+      border-radius: 100px;
     }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html, body {
@@ -105,26 +167,207 @@
     .leaflet-dragging .leaflet-grab { cursor: grabbing; }
     .pin-wrap, .seeker-wrap { background: transparent !important; border: none !important; }
     .pin-red {
-      width: 14px; height: 14px; background: var(--red);
+      width: 12px; height: 12px; background: var(--red);
       border: 2px solid #fff; border-radius: 50%;
-      box-shadow: 0 0 10px rgba(255,68,68,0.8);
+      box-shadow: 0 0 12px rgba(255,68,68,0.95), 0 0 4px rgba(255,100,100,0.5);
       animation: pulse-red 1.4s ease-in-out infinite;
     }
     .pin-green {
-      width: 18px; height: 18px; background: var(--teal);
+      width: 14px; height: 14px; background: var(--teal);
       border: 2px solid #fff; border-radius: 50%;
-      box-shadow: 0 0 14px rgba(0,212,170,0.9);
+      box-shadow: 0 0 14px rgba(0,212,170,0.95), 0 0 6px rgba(0,212,170,0.5);
       animation: pulse-green 1s ease-in-out infinite;
     }
     .pin-green.hard { animation: pulse-green-hard 0.7s ease-in-out infinite; }
     @keyframes pulse-red { 50% { transform: scale(1.25); } }
     @keyframes pulse-green { 50% { transform: scale(1.15); } }
     @keyframes pulse-green-hard { 50% { transform: scale(1.35); box-shadow: 0 0 22px rgba(0,212,170,1); } }
+    .user-loc-dot {
+      width: 16px; height: 16px; background: #fff;
+      border: 3px solid var(--blue); border-radius: 50%;
+      box-shadow: 0 0 0 6px rgba(59,130,246,0.25), 0 0 16px rgba(59,130,246,0.85);
+      animation: user-pulse 2s ease-in-out infinite;
+    }
+    @keyframes user-pulse {
+      50% { box-shadow: 0 0 0 10px rgba(59,130,246,0.12), 0 0 20px rgba(59,130,246,1); }
+    }
+    .pin-community {
+      width: 16px; height: 16px; background: var(--amber);
+      border: 2px solid #fff; border-radius: 50%;
+      box-shadow: 0 0 12px rgba(245,158,11,0.85);
+    }
+    .pin-reported { opacity: 0.45; filter: grayscale(0.6); }
+    .map-toolbar {
+      position: absolute; left: 12px; z-index: 600;
+      bottom: calc(36% + 14px);
+      display: flex; align-items: center; gap: 0;
+      border-radius: 14px; overflow: hidden;
+      border: 1px solid var(--border);
+      background: rgba(19,19,26,0.94);
+      backdrop-filter: blur(14px);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.45);
+    }
+    .map-toolbar button {
+      width: 42px; height: 42px; border: none; background: transparent;
+      color: var(--text); font-size: 17px; cursor: pointer; font-family: inherit;
+    }
+    .map-toolbar button:hover { background: rgba(255,255,255,0.06); color: var(--teal); }
+    .map-toolbar button.active {
+      background: rgba(0,212,170,0.2); color: var(--teal);
+    }
+    .map-toolbar .tb-sep { width: 1px; height: 24px; background: var(--border); }
+    .map-box.has-sheet .leaflet-bottom.leaflet-right { bottom: 12px !important; }
+    .map-add-hint {
+      position: absolute; left: 12px; right: 12px; bottom: calc(36% + 16px);
+      z-index: 600; padding: 10px 14px; border-radius: 12px;
+      background: rgba(245,158,11,0.15); border: 1px solid rgba(245,158,11,0.45);
+      font-size: 12px; font-weight: 600; text-align: center; display: none;
+    }
+    .map-add-hint.show { display: block; }
+    .nearby-chip {
+      position: absolute; left: 12px; z-index: 600; top: 132px;
+      padding: 6px 12px; border-radius: 20px;
+      background: rgba(19,19,26,0.9); border: 1px solid rgba(59,130,246,0.45);
+      font-size: 11px; font-weight: 700; color: var(--blue); display: none;
+    }
+    .nearby-chip.show { display: block; }
+    .crowd-pin {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: linear-gradient(145deg, #7c3aed, #a855f7);
+      border: 2px solid #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; box-shadow: 0 0 16px rgba(168,85,247,0.75);
+      animation: crowd-pulse 1.6s ease-in-out infinite;
+    }
+    @keyframes crowd-pulse {
+      50% { transform: scale(1.12); box-shadow: 0 0 22px rgba(168,85,247,1); }
+    }
+    .crowd-live-banner {
+      display: none;
+      position: absolute; right: 12px; z-index: 600; top: 100px;
+      max-width: 168px; padding: 8px 12px; border-radius: 12px;
+      background: rgba(124,58,237,0.18); border: 1px solid rgba(168,85,247,0.5);
+      font-size: 11px; font-weight: 700; color: #c4b5fd;
+      backdrop-filter: blur(10px); cursor: pointer; line-height: 1.35;
+    }
+    .crowd-live-banner .live-dot {
+      display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+      background: #a855f7; margin-right: 5px; animation: pulse-green 1s infinite;
+    }
+    .crowd-sheet-title {
+      font-size: 12px; font-weight: 700; color: #c4b5fd;
+      margin: 14px 0 8px; text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .crowd-row {
+      display: flex; gap: 10px; padding: 10px 0;
+      border-bottom: 1px solid var(--border); cursor: pointer;
+      align-items: flex-start;
+    }
+    .crowd-row:last-child { border-bottom: none; }
+    .crowd-row .cr-ico { font-size: 20px; flex-shrink: 0; }
+    .crowd-row b { display: block; font-size: 13px; }
+    .crowd-row span { font-size: 11px; color: var(--muted); line-height: 1.4; }
+    .crowd-row .cr-eta { font-size: 10px; color: #c4b5fd; font-weight: 700; margin-top: 2px; }
+    .leaflet-popup-content .crowd-live-tag {
+      display: inline-block; font-size: 10px; font-weight: 800;
+      color: #c4b5fd; background: rgba(124,58,237,0.2);
+      padding: 2px 8px; border-radius: 6px; margin-bottom: 6px;
+    }
+
+    .popup-btn-outline {
+      display: block; width: 100%; margin-top: 8px; padding: 9px;
+      background: transparent; color: var(--muted); border: 1px solid var(--border);
+      border-radius: 10px; font-weight: 600; font-size: 12px;
+      cursor: pointer; font-family: inherit; min-height: 40px;
+    }
+    #qr-wrap {
+      display: flex; align-items: center; justify-content: center;
+      margin: 16px auto; padding: 14px;
+      background: linear-gradient(145deg, #0d0d14, #16161f);
+      border: 1px solid rgba(0,212,170,0.25);
+      border-radius: 16px;
+    }
+    .qr-brand { font-size: 12px; font-weight: 700; color: var(--teal); margin-top: 8px; }
+
+    #add-spot-modal {
+      position: fixed; inset: 0; z-index: 10000;
+      background: rgba(0,0,0,0.82);
+      display: none; align-items: flex-end; justify-content: center;
+      padding: 16px; padding-bottom: max(16px, env(safe-area-inset-bottom));
+    }
+    #add-spot-modal.show { display: flex; }
+    .add-spot-sheet {
+      width: 100%; max-width: 360px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px 20px 16px 16px;
+      padding: 20px 20px 24px;
+      box-shadow: 0 -12px 48px rgba(0,0,0,0.55);
+      animation: sheet-up 0.28s ease-out;
+    }
+    @keyframes sheet-up {
+      from { transform: translateY(24px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    .add-spot-sheet .handle-bar {
+      width: 40px; height: 4px; border-radius: 2px;
+      background: rgba(255,255,255,0.15); margin: 0 auto 16px;
+    }
+    .add-spot-sheet h3 {
+      font-size: 18px; font-weight: 800; margin-bottom: 4px;
+    }
+    .add-spot-sheet .sub {
+      font-size: 12px; color: var(--muted); margin-bottom: 16px; line-height: 1.45;
+    }
+    .add-spot-sheet label {
+      display: block; font-size: 11px; font-weight: 700;
+      color: var(--muted); text-transform: uppercase;
+      letter-spacing: 0.05em; margin-bottom: 6px;
+    }
+    .add-spot-sheet input {
+      width: 100%; padding: 12px 14px; border-radius: 12px;
+      border: 1px solid var(--border); background: var(--bg);
+      color: var(--text); font-family: inherit; font-size: 15px;
+      margin-bottom: 14px;
+    }
+    .add-spot-sheet input:focus {
+      outline: none; border-color: rgba(0,212,170,0.5);
+      box-shadow: 0 0 0 3px rgba(0,212,170,0.12);
+    }
+    .avail-pick {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px;
+    }
+    .avail-pick button {
+      padding: 12px; border-radius: 12px; border: 1px solid var(--border);
+      background: var(--bg); color: var(--muted); font-weight: 700;
+      font-size: 13px; cursor: pointer; font-family: inherit;
+    }
+    .avail-pick button.selected-free {
+      border-color: var(--teal); background: rgba(0,212,170,0.15); color: var(--teal);
+    }
+    .avail-pick button.selected-busy {
+      border-color: var(--red); background: rgba(255,68,68,0.12); color: #ff8888;
+    }
+    .add-spot-actions { display: flex; gap: 10px; }
+    .add-spot-actions .btn { flex: 1; margin: 0; }
     .seeker-dot {
       width: 14px; height: 14px; background: var(--blue);
       border: 2px solid #fff; border-radius: 50%;
       box-shadow: 0 0 12px rgba(59,130,246,0.9);
     }
+
+    .ae-cluster-wrap { background: none !important; border: none !important; }
+    .ae-cluster {
+      width: 100%; height: 100%; border-radius: 50%;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      background: rgba(19,19,26,0.94); border: 2px solid #FF4444;
+      box-shadow: 0 0 20px rgba(0,0,0,0.5);
+      color: #F0F0F0; font-weight: 800; line-height: 1.1;
+    }
+    .ae-cluster.has-free { border-color: #00D4AA; box-shadow: 0 0 18px rgba(0,212,170,0.35); }
+    .ae-cluster-n { font-size: 15px; }
+    .ae-cluster-sub { font-size: 9px; font-weight: 700; color: #00D4AA; margin-top: 1px; }
+    .marker-cluster-small, .marker-cluster-medium, .marker-cluster-large { background: transparent; }
     .leaflet-popup-content-wrapper {
       background: var(--surface); color: var(--text);
       border: 1px solid var(--border); border-radius: 12px;
@@ -176,7 +419,78 @@
       background: linear-gradient(135deg, var(--blue), #1d4ed8);
       display: flex; align-items: center; justify-content: center;
       font-weight: 700; font-size: 13px;
+      border: none; cursor: pointer; padding: 0;
+      font-family: inherit; color: #fff;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
     }
+    .avatar:hover { transform: scale(1.06); box-shadow: 0 0 0 2px rgba(0,212,170,0.45); }
+    .avatar.guest { background: var(--surface); color: var(--muted); border: 1px solid var(--border); }
+    #screen-6 .scroll-body { padding: 16px; }
+    .profile-hero {
+      text-align: center; padding: 28px 16px 24px;
+      background: linear-gradient(160deg, rgba(0,212,170,0.12), rgba(59,130,246,0.08));
+      border: 1px solid var(--border); border-radius: 16px; margin-bottom: 20px;
+    }
+    .profile-hero .ph-avatar {
+      width: 72px; height: 72px; border-radius: 50%; margin: 0 auto 12px;
+      background: linear-gradient(135deg, var(--blue), #1d4ed8);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 26px; font-weight: 800; color: #fff;
+      box-shadow: 0 8px 24px rgba(59,130,246,0.35);
+    }
+    .profile-hero .ph-name { font-size: 20px; font-weight: 800; }
+    .profile-hero .ph-email { font-size: 13px; color: var(--muted); margin-top: 4px; }
+    .profile-hero .ph-tag {
+      display: inline-block; margin-top: 10px; font-size: 11px; font-weight: 700;
+      color: var(--teal); background: rgba(0,212,170,0.12);
+      padding: 4px 10px; border-radius: 20px;
+    }
+    .profile-stats {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px;
+    }
+    .profile-stat {
+      text-align: center; padding: 14px 8px;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    }
+    .profile-stat b { display: block; font-size: 20px; font-weight: 800; color: var(--teal); margin-bottom: 4px; }
+    .profile-stat span { font-size: 11px; color: var(--muted); }
+    .profile-section { margin-bottom: 20px; }
+    .profile-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 0; border-bottom: 1px solid var(--border);
+      font-size: 14px; min-height: 48px;
+    }
+    .profile-row:last-child { border-bottom: none; }
+    .profile-row .lbl { color: var(--muted); font-size: 12px; }
+    .login-card {
+      padding: 20px; border-radius: 16px;
+      background: var(--surface); border: 1px solid var(--border);
+    }
+    .login-card h3 { font-size: 18px; font-weight: 800; margin-bottom: 6px; }
+    .login-card .sub { font-size: 13px; color: var(--muted); margin-bottom: 18px; line-height: 1.45; }
+    .login-form { display: flex; flex-direction: column; gap: 12px; }
+    .login-form label { font-size: 12px; font-weight: 600; color: var(--muted); }
+    .login-form input {
+      width: 100%; padding: 12px 14px; border-radius: 12px;
+      border: 1px solid var(--border); background: var(--bg);
+      color: var(--text); font-family: inherit; font-size: 16px;
+    }
+    .login-form input:focus {
+      outline: none; border-color: rgba(0,212,170,0.5);
+      box-shadow: 0 0 0 3px rgba(0,212,170,0.12);
+    }
+    .login-guest {
+      display: block; width: 100%; margin-top: 10px;
+      background: none; border: none; color: var(--muted);
+      font-size: 13px; font-weight: 600; cursor: pointer;
+      padding: 12px; font-family: inherit;
+    }
+    .login-guest:hover { color: var(--teal); }
+    .btn-logout {
+      background: rgba(255,68,68,0.12); color: #ff8888;
+      border: 1px solid rgba(255,68,68,0.35);
+    }
+    .btn-logout:hover { background: rgba(255,68,68,0.2); }
     .pts-badge {
       font-size: 12px; font-weight: 700; color: var(--bg);
       background: var(--amber); padding: 4px 10px;
@@ -427,10 +741,10 @@
     .pts-red { color: var(--red); }
     .rewards-scroll {
       display: flex; gap: 12px; overflow-x: auto;
-      padding-bottom: 8px; scroll-snap-type: x mandatory;
+      padding-bottom: 10px; scroll-snap-type: x mandatory;
       -webkit-overflow-scrolling: touch;
+      scrollbar-color: var(--scrollbar-thumb) transparent;
     }
-    .rewards-scroll::-webkit-scrollbar { display: none; }
     .reward-card {
       flex: 0 0 75%; scroll-snap-align: start;
       padding: 16px; min-height: 160px;
@@ -564,18 +878,32 @@
               <span class="logo-sm">Ae!</span>
               <div class="top-right">
                 <button type="button" id="demo-start-btn" class="demo-btn-top" onclick="App.startDemo()">▶ Demo</button>
-                <div class="avatar">LK</div>
+                <button type="button" class="avatar" id="profile-btn" onclick="App.openProfile()" aria-label="Profil">LK</button>
                 <span class="pts-badge" id="pts-top">47 Gušti</span>
               </div>
             </header>
+
+            <div id="crowd-live-banner" class="crowd-live-banner" onclick="App.toggleSheet()" role="status">
+              <span class="live-dot" aria-hidden="true"></span><span id="crowd-banner-text">4 live crowds</span>
+            </div>
+            <div id="nearby-chip" class="nearby-chip" role="status"></div>
+            <div class="map-toolbar" role="toolbar" aria-label="Map tools">
+              <button type="button" id="btn-my-location" title="My location — Split Tech Park" onclick="App.centerOnUser()">📍</button>
+              <span class="tb-sep" aria-hidden="true"></span>
+              <button type="button" id="btn-add-spot" title="Add Misto" onclick="App.toggleAddSpotMode()">➕</button>
+            </div>
+            <div id="map-add-hint" class="map-add-hint">Tap the map to mark a new parking spot</div>
             <div class="ai-live"><span class="ai-dot"></span> ◉ AI LIVE</div>
             <div class="bottom-sheet" id="map-sheet">
               <div class="sheet-handle" onclick="App.toggleSheet()" role="button" aria-label="Toggle panel"></div>
               <p class="sheet-hint">Tap to see streets &amp; actions · pinch map to zoom</p>
               <div class="sheet-body">
-              <p class="sheet-title">Split 3 — 20:15h</p>
+              <p class="sheet-title">Split — 20:15h</p>
               <p class="occ-label" id="occ-label">18 of 19 spots taken</p>
               <div class="occ-bar" id="occ-bar"><div class="occ-red" id="occ-red"></div><div class="occ-teal" id="occ-teal"></div></div>
+
+              <p class="crowd-sheet-title" id="crowd-sheet-heading">Live crowds</p>
+              <div id="crowd-sheet-list"></div>
               <div class="sheet-streets" id="sheet-streets"></div>
               <div class="cta-row" id="demo-target-leaving-row">
                 <button type="button" id="demo-target-leaving" class="btn btn-teal" onclick="App.go(2)">🚗 I'm Leaving</button>
@@ -595,7 +923,7 @@
           <div class="scroll-body" style="position:relative">
             <div class="card location-card">
               <span>📍</span>
-              <p class="addr">Matice Hrvatske 14, Split 3</p>
+              <p class="addr">Dračevac 3D, Split Tech Park</p>
               <p class="sub">Your current parking spot</p>
               <div class="thumb-map"><div id="map-2" class="leaflet-map"></div></div>
             </div>
@@ -636,17 +964,17 @@
           </div>
           <div class="map-find"><div id="map-3" class="leaflet-map"></div></div>
           <div class="ai-panel">
-            <p class="cap">AI Prediction — Split 3</p>
+            <p class="cap">AI Prediction — Split</p>
             <div class="prob-row">
-              <div class="prob-head"><span>Matice Hrvatske</span><span style="color:var(--teal)">78% · 1 available</span></div>
+              <div class="prob-head"><span>Spinut</span><span style="color:var(--teal)">78% · 1 available</span></div>
               <div class="prob-bar"><div class="prob-fill" style="width:78%;background:var(--teal)"></div></div>
             </div>
             <div class="prob-row">
-              <div class="prob-head"><span>Domovinskog rata</span><span style="color:var(--amber)">34%</span></div>
+              <div class="prob-head"><span>Centar</span><span style="color:var(--amber)">34%</span></div>
               <div class="prob-bar"><div class="prob-fill" style="width:34%;background:var(--amber)"></div></div>
             </div>
             <div class="prob-row">
-              <div class="prob-head"><span>Šoltanska ul.</span><span style="color:var(--red)">11%</span></div>
+              <div class="prob-head"><span>Firule</span><span style="color:var(--red)">11%</span></div>
               <div class="prob-bar"><div class="prob-fill" style="width:11%;background:var(--red)"></div></div>
             </div>
             <p style="font-size:11px;color:var(--muted);margin:10px 0 14px">Based on 2,847 trips analyzed in this area</p>
@@ -665,11 +993,11 @@
             <div class="card timer-card" id="demo-target-nav-timer">
               <p class="lbl">🎯 Reserved! Arriving in:</p>
               <p class="timer-big" id="nav-timer">1:47</p>
-              <p style="font-weight:600;font-size:14px">Matice Hrvatske 14, Split 3</p>
+              <p style="font-weight:600;font-size:14px">Matice Hrvatske 14, Spinut</p>
             </div>
             <div class="card turn-strip">
               <span class="arrow">↑</span>
-              <span>Head north on Ul. Domovinskog rata</span>
+              <span>Head north on Domovinskog rata</span>
             </div>
             <a class="cancel-link" onclick="App.go(1)">Cancel reservation</a>
           </div>
@@ -740,6 +1068,129 @@
                 <span class="reward-badge">35 Gušti</span>
                 <button type="button" class="btn btn-outline" onclick="App.openQR('Bruna Pizzeria')">Get QR Code →</button>
               </div>
+              <div class="card reward-card">
+                <span style="font-size:28px">🥐</span>
+                <h4>Fresh Burek</h4>
+                <p>Pekara Hrvoje · Trstenik · 1.1km</p>
+                <span class="reward-badge">12 Gušti</span>
+                <button type="button" class="btn btn-outline" onclick="App.openQR('Pekara Hrvoje')">Get QR Code →</button>
+              </div>
+              <div class="card reward-card">
+                <span style="font-size:28px">🛒</span>
+                <h4>€3 off Groceries</h4>
+                <p>Konzum Trstenik · 0.9km</p>
+                <span class="reward-badge">25 Gušti</span>
+                <button type="button" class="btn btn-outline" onclick="App.openQR('Konzum Trstenik')">Get QR Code →</button>
+              </div>
+              <div class="card reward-card">
+                <span style="font-size:28px">🚲</span>
+                <h4>Nextbike Day Pass</h4>
+                <p>Unlimited 24h · city-wide</p>
+                <span class="reward-badge">30 Gušti</span>
+                <button type="button" class="btn btn-outline">Activate →</button>
+              </div>
+              <div class="card reward-card">
+                <span style="font-size:28px">🅿️</span>
+                <h4>1h Zone 3 Parking</h4>
+                <p>Split municipal · digital voucher</p>
+                <span class="reward-badge">18 Gušti</span>
+                <button type="button" class="btn btn-outline">Activate →</button>
+              </div>
+              <div class="card reward-card">
+                <span style="font-size:28px">🍦</span>
+                <h4>Gelato Scoop</h4>
+                <p>Moritz Eis · Riva · 2.4km</p>
+                <span class="reward-badge">14 Gušti</span>
+                <button type="button" class="btn btn-outline" onclick="App.openQR('Moritz Eis Riva')">Get QR Code →</button>
+              </div>
+              <div class="card reward-card">
+                <span style="font-size:28px">💇</span>
+                <h4>€5 Haircut Credit</h4>
+                <p>Frizerski Studio Nina · 1.6km</p>
+                <span class="reward-badge">40 Gušti</span>
+                <button type="button" class="btn btn-outline" onclick="App.openQR('Frizerski Studio Nina')">Get QR Code →</button>
+              </div>
+              <div class="card reward-card">
+                <span style="font-size:28px">🍷</span>
+                <h4>Glass of House Wine</h4>
+                <p>Šugaman · Stari grad · 2.1km</p>
+                <span class="reward-badge">22 Gušti</span>
+                <button type="button" class="btn btn-outline" onclick="App.openQR('Šugaman')">Get QR Code →</button>
+              </div>
+              <div class="card reward-card">
+                <span style="font-size:28px">🥗</span>
+                <h4>Market Veg Box</h4>
+                <p>Pazar Split · green kvart bonus</p>
+                <span class="reward-badge">28 Gušti</span>
+                <button type="button" class="btn btn-outline" onclick="App.openQR('Pazar Split')">Get QR Code →</button>
+              </div>
+              <div class="card reward-card">
+                <span style="font-size:28px">⛴</span>
+                <h4>Catamaran -20%</h4>
+                <p>Split → Supetar · Jadrolinija</p>
+                <span class="reward-badge">45 Gušti</span>
+                <button type="button" class="btn btn-outline">Activate →</button>
+              </div>
+              <div class="card reward-card">
+                <span style="font-size:28px">🧴</span>
+                <h4>Car Wash Basic</h4>
+                <p>Auto SPA Firule · exterior rinse</p>
+                <span class="reward-badge">32 Gušti</span>
+                <button type="button" class="btn btn-outline" onclick="App.openQR('Auto SPA Firule')">Get QR Code →</button>
+              </div>
+              <div class="card reward-card">
+                <span style="font-size:28px">☀️</span>
+                <h4>Beach Umbrella 2h</h4>
+                <p>Bačvice · weekend partner</p>
+                <span class="reward-badge">24 Gušti</span>
+                <button type="button" class="btn btn-outline">Activate →</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+
+        <!-- SCREEN 6: Profile -->
+        <section id="screen-6" class="screen">
+          <header class="screen-header">
+            <button type="button" class="back-btn" onclick="App.closeProfile()" aria-label="Back">←</button>
+            <span class="screen-title">Profil</span>
+          </header>
+          <div class="scroll-body">
+            <div id="profile-guest" class="login-card" style="display:none">
+              <h3>Prijavi se</h3>
+              <p class="sub">Mock login — any email works for the demo.</p>
+              <form class="login-form" onsubmit="App.mockLogin(event)">
+                <div>
+                  <label for="login-email">Email</label>
+                  <input type="email" id="login-email" placeholder="ime@email.hr" autocomplete="email" />
+                </div>
+                <div>
+                  <label for="login-pass">Password</label>
+                  <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password" />
+                </div>
+                <button type="submit" class="btn btn-teal" style="margin-top:4px">Sign in</button>
+              </form>
+              <button type="button" class="login-guest" onclick="App.closeProfile()">Continue as guest</button>
+            </div>
+            <div id="profile-logged">
+              <div class="profile-hero">
+                <div class="ph-avatar" id="profile-avatar-lg">LK</div>
+                <p class="ph-name" id="profile-name">Luka Kovač</p>
+                <p class="ph-email" id="profile-email">luka.kovac@email.hr</p>
+                <span class="ph-tag" id="profile-tier">Redar · Split</span>
+              </div>
+              <div class="profile-stats">
+                <div class="profile-stat"><b id="profile-stat-pts">47</b><span>Gušti</span></div>
+                <div class="profile-stat"><b>12</b><span>Shared</span></div>
+                <div class="profile-stat"><b>3</b><span>Reports</span></div>
+              </div>
+              <div class="card profile-section" style="padding:4px 16px">
+                <div class="profile-row"><span>Home zone</span><span class="lbl">Split Tech Park</span></div>
+                <div class="profile-row"><span>Vehicle</span><span class="lbl">Peugeot 308</span></div>
+                <div class="profile-row"><span>Member since</span><span class="lbl">Mar 2026</span></div>
+              </div>
+              <button type="button" class="btn btn-logout" onclick="App.mockLogout()">Log out</button>
             </div>
           </div>
         </section>
@@ -765,17 +1216,41 @@
     </div>
   </div>
 
+  <div id="add-spot-modal" onclick="if(event.target===this)App.closeAddSpotModal()">
+    <div class="add-spot-sheet" onclick="event.stopPropagation()">
+      <div class="handle-bar" aria-hidden="true"></div>
+      <h3>Mark a new Misto</h3>
+      <p class="sub" id="add-spot-location-hint">Pin dropped on the map</p>
+      <label for="add-spot-street">Street</label>
+      <input type="text" id="add-spot-street" placeholder="e.g. Domovinskog rata" />
+      <label for="add-spot-num">Number / label</label>
+      <input type="text" id="add-spot-num" placeholder="e.g. 14" />
+      <label>Status</label>
+      <div class="avail-pick">
+        <button type="button" id="add-pick-free" class="selected-free" onclick="App.setAddSpotAvail(true)">✅ Free now</button>
+        <button type="button" id="add-pick-busy" onclick="App.setAddSpotAvail(false)">🔴 Taken</button>
+      </div>
+      <div class="add-spot-actions">
+        <button type="button" class="btn btn-outline" onclick="App.closeAddSpotModal()">Cancel</button>
+        <button type="button" class="btn btn-teal" onclick="App.submitAddSpot()">Add to map</button>
+      </div>
+    </div>
+  </div>
+
   <div id="qr-modal">
     <div class="modal-box">
       <p style="font-weight:700;font-size:16px">Show this to the cashier</p>
       <p id="qr-merchant" style="color:var(--muted);font-size:13px;margin-top:6px"></p>
-      <canvas id="qr-canvas" width="200" height="200"></canvas>
+      <div id="qr-wrap"></div>
+      <p class="qr-brand">◉ Ae! Gušti Pay</p>
       <p class="qr-expiry" id="qr-expiry">Expires in 4:59</p>
       <button type="button" class="btn btn-outline" style="margin-top:16px" onclick="App.closeQR()">Close</button>
     </div>
   </div>
 
+  <script src="https://unpkg.com/qr-code-styling@1.9.2/lib/qr-code-styling.js"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
   <script>
   function playDing() {
     try {
@@ -792,48 +1267,173 @@
     } catch (e) {}
   }
 
-  function generateFakeQR(canvas) {
-    const ctx = canvas.getContext('2d'), s = 29, c = canvas.width / s;
-    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-    [[0,0],[0,s-7],[s-7,0]].forEach(([r, col]) => {
-      ctx.fillStyle = '#000';
-      ctx.fillRect(col * c, r * c, 7 * c, 7 * c);
-      ctx.fillStyle = '#fff';
-      ctx.fillRect((col + 1) * c, (r + 1) * c, 5 * c, 5 * c);
-      ctx.fillStyle = '#000';
-      ctx.fillRect((col + 2) * c, (r + 2) * c, 3 * c, 3 * c);
-    });
-    for (let r = 0; r < s; r++) for (let col = 0; col < s; col++)
-      if (Math.random() > 0.5) { ctx.fillStyle = '#000'; ctx.fillRect(col * c, r * c, c, c); }
+  let aeQrStyle = null;
+  function renderAeQR(merchant, points) {
+    const wrap = document.getElementById('qr-wrap');
+    if (!wrap || typeof QRCodeStyling === 'undefined') return;
+    const payload = 'ae://pay?m=' + encodeURIComponent(merchant) + '&pts=' + (points || 0) + '&t=' + Date.now();
+    wrap.innerHTML = '';
+    if (!aeQrStyle) {
+      aeQrStyle = new QRCodeStyling({
+        width: 220, height: 220, type: 'canvas', data: payload, margin: 4,
+        qrOptions: { errorCorrectionLevel: 'H' },
+        dotsOptions: { color: '#00D4AA', type: 'rounded' },
+        backgroundOptions: { color: '#0d0d14' },
+        cornersSquareOptions: { type: 'extra-rounded', color: '#00D4AA' },
+        cornersDotOptions: { type: 'dot', color: '#F0F0F0' }
+      });
+    } else aeQrStyle.update({ data: payload });
+    aeQrStyle.append(wrap);
   }
 
-  const SPOTS = [
-    { lat: 43.5124, lng: 16.4816, street: 'Domovinskog rata', num: '8', available: false, detail: 'Parked ~2h' },
-    { lat: 43.5127, lng: 16.4823, street: 'Domovinskog rata', num: '15', available: false, detail: 'Parked ~40min' },
-    { lat: 43.5129, lng: 16.4832, street: 'Domovinskog rata', num: '22', available: false, detail: 'Resident permit' },
-    { lat: 43.5132, lng: 16.4841, street: 'Domovinskog rata', num: '31', available: false, detail: 'Long stay' },
-    { lat: 43.5133, lng: 16.4838, street: 'Domovinskog rata', num: '44', available: false, detail: 'Just taken' },
-    { lat: 43.5136, lng: 16.4850, street: 'Šoltanska ul.', num: '4', available: false, detail: 'Block full' },
-    { lat: 43.5141, lng: 16.4858, street: 'Šoltanska ul.', num: '11', available: false, detail: 'Parked ~1h' },
-    { lat: 43.5138, lng: 16.4863, street: 'Šoltanska ul.', num: '18', available: false, detail: 'No turnover' },
-    { lat: 43.5140, lng: 16.4818, street: 'Matice Hrvatske', num: '14', available: true, detail: 'Available · 0 claims' },
-    { lat: 43.5135, lng: 16.4815, street: 'Matice Hrvatske', num: '9', available: false, detail: 'Parked ~25min' },
-    { lat: 43.5143, lng: 16.4822, street: 'Matice Hrvatske', num: '21', available: false, detail: 'Parked ~50min' },
-    { lat: 43.5119, lng: 16.4826, street: 'Put Cetina', num: '6', available: false, detail: 'Tight fit' },
-    { lat: 43.5116, lng: 16.4834, street: 'Vukovarska', num: '12', available: false, detail: 'Parked ~3h' },
-    { lat: 43.5122, lng: 16.4846, street: 'Vukovarska', num: '28', available: false, detail: 'Occupied' },
-    { lat: 43.5146, lng: 16.4812, street: 'Kraj Slovenije', num: '3', available: false, detail: 'Overnight' },
-    { lat: 43.5148, lng: 16.4828, street: 'Kraj Slovenije', num: '7', available: false, detail: 'Parked ~20min' },
-    { lat: 43.5130, lng: 16.4810, street: 'Zrinsko-Frankopanska', num: '5', available: false, detail: 'Loading busy' },
-    { lat: 43.5126, lng: 16.4808, street: 'Zrinsko-Frankopanska', num: '2', available: false, detail: 'Parked ~1.5h' },
-    { lat: 43.5144, lng: 16.4835, street: 'Put Meštrovića', num: '3', available: false, detail: 'Visitor full' }
-  ];
-  const FREE_IDX = SPOTS.findIndex(s => s.available);
-  const CENTER = [43.5133, 16.4827];
-  const SEEKER = [43.5152, 16.4812];
+  const SPLIT_CENTER = [43.5105, 16.455];
+  const TECH_PARK = [43.52553, 16.49757];
+  const POLJUD = [43.518611, 16.469722];
+
+  function makeRng(seed) {
+    let s = seed >>> 0;
+    return () => {
+      s = (s + 0x6D2B79F5) | 0;
+      let t = Math.imul(s ^ (s >>> 15), 1 | s);
+      t ^= t + Math.imul(t ^ (t >>> 7), 61 | t);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function buildDemoSpots() {
+    const zones = [
+      { lat: 43.5080, lng: 16.4402, spread: 0.0038, streets: ['Marmontova', 'Narodni trg', 'Dioklecijanova', 'Obala'] },
+      { lat: 43.5140, lng: 16.4820, spread: 0.0035, streets: ['Domovinskog rata', 'Matice Hrvatske', 'Šoltanska ul.'] },
+      { lat: 43.5185, lng: 16.4695, spread: 0.0032, streets: ['Vukovarska', 'Ulica Firula', 'Šetalište Firula'] },
+      { lat: 43.5055, lng: 16.4425, spread: 0.0030, streets: ['Riva', 'Voćarska', 'Slovenska ul.'] },
+      { lat: 43.5020, lng: 16.4480, spread: 0.0028, streets: ['Hrvatske mornarice', 'Zagrebačka'] },
+      { lat: 43.5125, lng: 16.4725, spread: 0.0032, streets: ['Put Cetina', 'Trstenjačka'] },
+      { lat: 43.5070, lng: 16.4520, spread: 0.0026, streets: ['Ulica kneza Mislava', 'Bolska cesta'] },
+      { lat: 43.5205, lng: 16.4965, spread: 0.0028, streets: ['Dračevac', 'Ulica kneza Branimira'] }
+    ];
+    const rand = makeRng(20260516);
+    const spots = [];
+    const placed = [];
+    const minSep2 = 0.00032 * 0.00032;
+    const perZone = 10;
+
+    zones.forEach(zone => {
+      let placedHere = 0;
+      let attempts = 0;
+      while (placedHere < perZone && attempts < perZone * 40) {
+        attempts++;
+        const angle = rand() * Math.PI * 2;
+        const r = Math.pow(rand(), 0.55) * zone.spread;
+        const lat = zone.lat + Math.sin(angle) * r + (rand() - 0.5) * 0.00035;
+        const lng = zone.lng + Math.cos(angle) * r * 1.12 + (rand() - 0.5) * 0.0003;
+        let ok = true;
+        for (let p = 0; p < placed.length; p++) {
+          const dlat = lat - placed[p][0];
+          const dlng = lng - placed[p][1];
+          if (dlat * dlat + dlng * dlng < minSep2) { ok = false; break; }
+        }
+        if (!ok) continue;
+        placed.push([lat, lng]);
+        placedHere++;
+        const street = zone.streets[Math.floor(rand() * zone.streets.length)];
+        const available = rand() < 0.065;
+        const mins = 10 + Math.floor(rand() * 165);
+        spots.push({
+          lat: Math.round(lat * 1e6) / 1e6,
+          lng: Math.round(lng * 1e6) / 1e6,
+          street,
+          num: String(2 + Math.floor(rand() * 86)),
+          available,
+          detail: available ? 'Available · 0 claims' : ('Parked ~' + mins + 'min')
+        });
+      }
+    });
+
+    spots.push({
+      lat: TECH_PARK[0] + 0.00012,
+      lng: TECH_PARK[1] - 0.0001,
+      street: 'Dračevac',
+      num: '3D',
+      available: false,
+      detail: 'Your spot · Split Tech Park'
+    });
+    spots.push({
+      lat: 43.5140,
+      lng: 16.4818,
+      street: 'Matice Hrvatske',
+      num: '14',
+      available: true,
+      detail: 'Available · 0 claims'
+    });
+    return spots;
+  }
+
+  const SPOTS = buildDemoSpots();
+  const USER_SPOT = { street: 'Dračevac', num: '3D', label: 'Split Tech Park' };
+
+  function loadCommunitySpots() {
+    try {
+      const raw = localStorage.getItem('ae_community_spots');
+      if (!raw) return;
+      JSON.parse(raw).forEach(s => {
+        if (haversineM([s.lat, s.lng], SPLIT_CENTER) > 6500) return;
+        SPOTS.push({
+          lat: s.lat, lng: s.lng, street: s.street || 'Community spot', num: s.num || '—',
+          available: s.available !== false, detail: s.detail || 'Added by neighbor',
+          community: true, id: s.id || ('c-' + s.lat)
+        });
+      });
+    } catch (e) {}
+  }
+  function saveCommunitySpots() {
+    try {
+      localStorage.setItem('ae_community_spots', JSON.stringify(
+        SPOTS.filter(s => s.community).map(s => ({
+          id: s.id, lat: s.lat, lng: s.lng, street: s.street, num: s.num,
+          available: s.available, detail: s.detail
+        }))
+      ));
+    } catch (e) {}
+  }
+  function haversineM(a, b) {
+    const R = 6371000, rad = x => x * Math.PI / 180;
+    const dLat = rad(b[0]-a[0]), dLng = rad(b[1]-a[1]);
+    const h = Math.sin(dLat/2)**2 + Math.cos(rad(a[0]))*Math.cos(rad(b[0]))*Math.sin(dLng/2)**2;
+    return 2 * R * Math.asin(Math.sqrt(h));
+  }
+  loadCommunitySpots();
+  const getFreeIdx = () => SPOTS.findIndex(s => s.available && !s.reported);
+  const CENTER = SPLIT_CENTER.slice();
+  const USER_DEFAULT = TECH_PARK.slice();
+  const USER_DEFAULT_LABEL = 'Split Tech Park';
+  const SEEKER = USER_DEFAULT;
   const TILE = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
   const coords = i => [SPOTS[i].lat, SPOTS[i].lng];
   const allCoords = () => SPOTS.map(s => [s.lat, s.lng]);
+
+  const CROWD_EVENTS = [
+    {
+      id: 'riva-concert', lat: 43.5082, lng: 16.4408, emoji: '🎵', radius: 200,
+      title: 'Riva live concert',
+      cause: 'Outdoor concert',
+      detail: 'Waterfront closed to cars · Centar packed',
+      level: 'high', endsInMin: 42
+    },
+    {
+      id: 'hajduk', lat: POLJUD[0], lng: POLJUD[1], emoji: '⚽', radius: 380,
+      title: 'HNK Hajduk — Poljud',
+      cause: 'Football match',
+      detail: 'Poljud Stadium · kickoff 20:30 · match-day traffic on Firule & Spinut',
+      level: 'high', endsInMin: 88
+    },
+    {
+      id: 'pazar', lat: 43.5108, lng: 16.4388, emoji: '🧺', radius: 140,
+      title: 'Green market rush',
+      cause: 'Saturday market peak',
+      detail: 'Pazar · delivery trucks on narrow streets',
+      level: 'med', endsInMin: 28
+    }
+  ];
   const delay = ms => new Promise(r => setTimeout(r, ms));
 
   const App = {
@@ -851,6 +1451,19 @@
     demoActive: false,
     demoAborted: false,
     demoTimers: [],
+    userLocation: null,
+    userLocLayer: null,
+    nearbyIndices: null,
+    addSpotMode: false,
+    pendingAddSpot: null,
+    addSpotAvail: true,
+    loggedIn: true,
+    user: { name: 'Luka Kovač', email: 'luka.kovac@email.hr', initials: 'LK' },
+    profileReturn: null,
+    crowdLayer: null,
+    crowdMarkers: [],
+    crowdTicker: null,
+    spotCluster: null,
 
     go(n) {
       if (this.demoActive && n === 0) return;
@@ -860,11 +1473,14 @@
       document.querySelectorAll('.nav-item').forEach(b => {
         b.classList.toggle('active', parseInt(b.dataset.nav, 10) === n);
       });
-      document.getElementById('bottom-nav').style.display = n === 0 ? 'none' : 'flex';
+      document.getElementById('bottom-nav').style.display = (n === 0 || n === 6) ? 'none' : 'flex';
 
       if (n === 1) {
+        this.setDefaultUserLocation();
         this.ensureMap('map-1', { mode: 'home' });
         this.updateHomeSheet();
+        this.startCrowdTicker();
+        this.renderCrowds('map-1');
       }
       if (n === 2) {
         this.resetShare();
@@ -873,11 +1489,324 @@
       if (n === 3) this.ensureMap('map-3', { mode: 'find' });
       if (n === 4) this.startNav();
       if (n === 5) this.updatePoints();
+      if (n === 6) this.renderProfile();
     },
 
     updatePoints() {
       document.getElementById('pts-top').textContent = this.points + ' Gušti';
       document.getElementById('wallet-bal').textContent = this.points;
+    },
+
+
+
+    activeCrowds() {
+      return CROWD_EVENTS.filter(c => c.endsInMin > 0);
+    },
+
+    crowdPopupHtml(ev) {
+      const levelLabel = ev.level === 'high' ? 'Heavy crowd' : (ev.level === 'med' ? 'Busy area' : 'Light crowd');
+      const park = ev.level === 'high'
+        ? 'Parking impact: high — avoid driving through'
+        : 'Parking impact: moderate nearby';
+      return '<span class="crowd-live-tag">◉ LIVE · ' + levelLabel + '</span>' +
+        '<strong>' + ev.emoji + ' ' + ev.title + '</strong><br>' +
+        '<span style="color:#a78bfa;font-size:12px;font-weight:600">' + ev.cause + '</span><br>' +
+        '<span style="color:#6B7280;font-size:12px">' + ev.detail + '</span><br>' +
+        '<span style="color:#6B7280;font-size:11px;display:block;margin-top:8px">' + park + '</span>' +
+        '<span style="color:#c4b5fd;font-size:11px;font-weight:700">Ends in ~' + ev.endsInMin + ' min</span>';
+    },
+
+    crowdIcon(ev) {
+      return L.divIcon({
+        className: 'crowd-wrap',
+        html: '<div class="crowd-pin">' + ev.emoji + '</div>',
+        iconSize: [28, 28], iconAnchor: [14, 14]
+      });
+    },
+
+    renderCrowds(mapId) {
+      if (mapId !== 'map-1') return;
+      const map = this.maps[mapId];
+      if (!map) return;
+      if (!this.crowdLayer) this.crowdLayer = L.layerGroup().addTo(map);
+      else if (!map.hasLayer(this.crowdLayer)) this.crowdLayer.addTo(map);
+      this.crowdLayer.clearLayers();
+      this.crowdMarkers = [];
+      const zoom = map.getZoom();
+      const showOnMap = zoom >= 16;
+      const active = this.activeCrowds();
+      active.forEach(ev => {
+        if (showOnMap) {
+          const fill = ev.level === 'high' ? 0.1 : (ev.level === 'med' ? 0.06 : 0.04);
+          const color = ev.level === 'high' ? '#a855f7' : '#7c3aed';
+          L.circle([ev.lat, ev.lng], {
+            radius: ev.radius * 0.65, color: color, fillColor: color,
+            fillOpacity: fill, weight: 1, dashArray: '6,8'
+          }).addTo(this.crowdLayer);
+          const m = L.marker([ev.lat, ev.lng], { icon: this.crowdIcon(ev), zIndexOffset: 800 })
+            .bindPopup(this.crowdPopupHtml(ev))
+            .addTo(this.crowdLayer);
+          m.on('click', () => m.openPopup());
+          this.crowdMarkers.push(m);
+        }
+      });
+      if (!this._crowdZoomBound) {
+        this._crowdZoomBound = true;
+        map.on('zoomend', () => { if (this.screen === 1) this.renderCrowds(mapId); });
+      }
+      this.updateCrowdUI();
+    },
+
+    updateCrowdUI() {
+      const active = this.activeCrowds();
+      const n = active.length;
+      const banner = document.getElementById('crowd-banner-text');
+      if (banner) {
+        banner.textContent = n ? (n + ' live crowd' + (n > 1 ? 's' : '')) : 'No active crowds';
+      }
+      const head = document.getElementById('crowd-sheet-heading');
+      if (head) head.textContent = n ? ('Live crowds · ' + n + ' now') : 'Live crowds';
+      const list = document.getElementById('crowd-sheet-list');
+      if (!list) return;
+      if (!n) {
+        list.innerHTML = '<p style="font-size:12px;color:var(--muted);padding:8px 0">No major events reported right now.</p>';
+        return;
+      }
+      list.innerHTML = active.map(ev =>
+        '<div class="crowd-row" onclick="App.flyToCrowd(\'' + ev.id + '\')">' +
+        '<span class="cr-ico">' + ev.emoji + '</span><div>' +
+        '<b>' + ev.title + '</b>' +
+        '<span>' + ev.cause + ' — ' + ev.detail + '</span>' +
+        '<span class="cr-eta">~' + ev.endsInMin + ' min left</span></div></div>'
+      ).join('');
+    },
+
+    flyToCrowd(id) {
+      const ev = CROWD_EVENTS.find(c => c.id === id);
+      const map = this.maps['map-1'];
+      if (!ev || !map) return;
+      document.getElementById('map-sheet').classList.remove('collapsed');
+      map.flyTo([ev.lat, ev.lng], 16, { animate: true, duration: 0.9 });
+      setTimeout(() => {
+        const active = CROWD_EVENTS.filter(c => c.endsInMin > 0);
+        const i = active.findIndex(c => c.id === id);
+        if (i >= 0 && this.crowdMarkers[i]) this.crowdMarkers[i].openPopup();
+      }, 700);
+    },
+
+    startCrowdTicker() {
+      if (this.crowdTicker) return;
+      this.crowdTicker = setInterval(() => {
+        CROWD_EVENTS.forEach(c => {
+          if (c.endsInMin > 0 && Math.random() > 0.7) c.endsInMin = Math.max(0, c.endsInMin - 1);
+        });
+        if (this.screen === 1 && this.maps['map-1']) this.renderCrowds('map-1');
+      }, 45000);
+    },
+
+    getUserPos() { return this.userLocation || USER_DEFAULT; },
+
+    setDefaultUserLocation() {
+      this.userLocation = USER_DEFAULT.slice();
+      this.userLocationAcc = 55;
+      this.userLocationIsDefault = true;
+      this.computeNearbyIndices();
+      if (this.maps['map-1']) {
+        this.updateUserOnMap('map-1');
+        this.updateNearbyChip();
+      }
+    },
+
+    getFreeSpotIdx() { return getFreeIdx(); },
+
+    promoteAnotherAvailable(nearLat, nearLng, excludeIdx) {
+      const hasFree = SPOTS.some((s, i) => s.available && !s.reported && i !== excludeIdx);
+      if (hasFree) return;
+      const ref = nearLat != null ? [nearLat, nearLng] : this.getUserPos();
+      const candidates = SPOTS.map((s, i) => ({ s, i })).filter(x =>
+        !x.s.available && !x.s.reported && !x.s.community && x.i !== excludeIdx
+      );
+      if (!candidates.length) return;
+      candidates.sort((a, b) =>
+        haversineM(ref, [a.s.lat, a.s.lng]) - haversineM(ref, [b.s.lat, b.s.lng])
+      );
+      const pick = candidates[0];
+      pick.s.available = true;
+      pick.s.freesInMin = null;
+      pick.s.detail = 'Just opened · neighbor update';
+      this.updateHomeSheet();
+    },
+
+
+    computeNearbyIndices(radiusM) {
+      radiusM = radiusM || 550;
+      if (!this.userLocation) { this.nearbyIndices = new Set(); return; }
+      const set = new Set();
+      SPOTS.forEach((sp, i) => {
+        if (!sp.reported && haversineM(this.userLocation, [sp.lat, sp.lng]) <= radiusM) set.add(i);
+      });
+      this.nearbyIndices = set;
+    },
+
+    getNearbyStats() {
+      let free = 0, total = 0;
+      (this.nearbyIndices || new Set()).forEach(i => {
+        const sp = SPOTS[i]; if (!sp) return;
+        total++; if (sp.available) free++;
+      });
+      return { free, total };
+    },
+
+    updateNearbyChip() {
+      const chip = document.getElementById('nearby-chip');
+      if (!chip) return;
+      const st = this.getNearbyStats();
+      const city = this.getStats();
+      chip.textContent = '📍 ' + USER_DEFAULT_LABEL + ' · ' +
+        (st.free ? st.free + ' free nearby' : 'No free nearby') +
+        ' · ' + city.available + ' in Split';
+      chip.classList.add('show');
+    },
+
+    updateUserOnMap(mapId) {
+      if (mapId !== 'map-1' || !this.userLocation) return;
+      const map = this.maps[mapId];
+      if (!map) return;
+      if (!this.userLocLayer) this.userLocLayer = L.layerGroup().addTo(map);
+      else if (!map.hasLayer(this.userLocLayer)) this.userLocLayer.addTo(map);
+      this.userLocLayer.clearLayers();
+      L.marker(this.userLocation, {
+        icon: L.divIcon({ className: 'pin-wrap', html: '<div class="user-loc-dot"></div>', iconSize: [16,16], iconAnchor: [8,8] }),
+        zIndexOffset: 1000
+      }).bindPopup('<strong>You are here</strong><br><span style="color:#6B7280;font-size:12px">' + USER_DEFAULT_LABEL + '</span>')
+        .addTo(this.userLocLayer);
+    },
+
+    centerOnUser(animate) {
+      const map = this.maps['map-1'];
+      if (!map) return;
+      this.setDefaultUserLocation();
+      const pts = [this.userLocation];
+      (this.nearbyIndices || new Set()).forEach(i => { const sp = SPOTS[i]; if (sp) pts.push([sp.lat, sp.lng]); });
+      if (pts.length > 1) {
+        map.fitBounds(L.latLngBounds(pts), { padding: [56, 56], maxZoom: 16, animate: animate !== false });
+      } else {
+        map.setView(this.userLocation, 16, { animate: animate !== false });
+      }
+    },
+
+    toggleAddSpotMode() {
+      this.addSpotMode = !this.addSpotMode;
+      document.getElementById('btn-add-spot')?.classList.toggle('active', this.addSpotMode);
+      document.getElementById('map-add-hint')?.classList.toggle('show', this.addSpotMode);
+      const c = this.maps['map-1']?.getContainer();
+      if (c) c.style.cursor = this.addSpotMode ? 'crosshair' : '';
+    },
+
+    openAddSpotModal(lat, lng) {
+      this.pendingAddSpot = { lat, lng };
+      const hint = document.getElementById('add-spot-location-hint');
+      if (hint) hint.textContent = 'In Split · ' + lat.toFixed(5) + ', ' + lng.toFixed(5);
+      document.getElementById('add-spot-street').value = '';
+      document.getElementById('add-spot-num').value = '';
+      this.setAddSpotAvail(true);
+      document.getElementById('add-spot-modal').classList.add('show');
+    },
+
+    closeAddSpotModal() {
+      document.getElementById('add-spot-modal').classList.remove('show');
+      this.pendingAddSpot = null;
+      if (this.addSpotMode) this.toggleAddSpotMode();
+    },
+
+    setAddSpotAvail(free) {
+      this.addSpotAvail = free;
+      document.getElementById('add-pick-free').className = free ? 'selected-free' : '';
+      document.getElementById('add-pick-busy').className = free ? '' : 'selected-busy';
+    },
+
+    submitAddSpot() {
+      const p = this.pendingAddSpot;
+      if (!p) return;
+      const street = document.getElementById('add-spot-street').value.trim() || 'Community spot';
+      const num = document.getElementById('add-spot-num').value.trim() || '—';
+      const avail = this.addSpotAvail;
+      SPOTS.push({
+        id: 'c-' + Date.now(), lat: p.lat, lng: p.lng, street, num,
+        available: avail, detail: 'Added by you · community', community: true
+      });
+      saveCommunitySpots();
+      this.computeNearbyIndices();
+      this.points += 3;
+      this.updatePoints();
+      this.closeAddSpotModal();
+      this.refreshMapPins('map-1');
+      this.updateUserOnMap('map-1');
+      this.updateNearbyChip();
+      this.updateHomeSheet();
+    },
+
+    addCommunitySpot(lat, lng) {
+      this.openAddSpotModal(lat, lng);
+    },
+
+    reportSpot(idx, kind) {
+      const spot = SPOTS[idx];
+      if (!spot) return;
+      const wasAvailable = spot.available && !spot.reported;
+      if (spot.community) {
+        if (!confirm('Remove this community spot from the map?')) return;
+        const lat = spot.lat, lng = spot.lng;
+        SPOTS.splice(SPOTS.indexOf(spot), 1);
+        saveCommunitySpots();
+        if (wasAvailable) this.promoteAnotherAvailable(lat, lng, idx);
+      } else {
+        spot.reported = true;
+        spot.available = false;
+        spot.detail = 'Under review · reported';
+        if (wasAvailable) this.promoteAnotherAvailable(spot.lat, spot.lng, idx);
+      }
+      this.points += 5;
+      this.updatePoints();
+      this.refreshMapPins('map-1');
+      this.updateHomeSheet();
+      this.updateNearbyChip();
+    },
+
+    popupReportHtml(i) {
+      return '<button class="popup-btn-outline" onclick="App.reportSpot(' + i + ',\'wrong\')">⚠️ Report wrong info</button>' +
+        '<button class="popup-btn-outline" onclick="App.reportSpot(' + i + ',\'ghost\')">🚫 No parking here</button>';
+    },
+
+    refreshMapPins(mapId) {
+      const map = this.maps[mapId];
+      if (!map) return;
+      if (mapId === 'map-1') {
+        this.addPinsToHomeMap(map, mapId);
+      } else {
+        const g = this.mapLayers[mapId];
+        if (!g) return;
+        g.clearLayers();
+        this.addPinsToGroup(g, mapId, true);
+      }
+      this.updateUserOnMap(mapId);
+      this.renderCrowds(mapId);
+    },
+
+    addPinsToHomeMap(map, mapId) {
+      if (this.spotCluster) {
+        try { map.removeLayer(this.spotCluster); } catch (e) {}
+        this.spotCluster = null;
+      }
+      let g = this.mapLayers[mapId];
+      if (!g || typeof g.clearLayers !== 'function') {
+        g = L.layerGroup().addTo(map);
+        this.mapLayers[mapId] = g;
+      } else {
+        g.clearLayers();
+        if (!map.hasLayer(g)) g.addTo(map);
+      }
+      this.addPinsToGroup(g, mapId, false);
     },
 
     addMapControls(map, id) {
@@ -904,9 +1833,11 @@
       const map = this.maps[id];
       if (!map) return;
       if (id === 'map-3' || id === 'map-4') {
-        map.fitBounds(L.latLngBounds([SEEKER, coords(FREE_IDX)]), { padding: [48, 48], maxZoom: 17 });
+        map.fitBounds(L.latLngBounds([this.getUserPos(), coords(getFreeIdx())]), { padding: [48, 48], maxZoom: 17 });
       } else if (id === 'map-2') {
-        map.setView(coords(FREE_IDX), 17, { animate: true });
+        map.setView(coords(getFreeIdx()), 17, { animate: true });
+      } else if (id === 'map-1' && this.userLocation) {
+        this.centerOnUser(true);
       } else {
         map.setView(CENTER, 16, { animate: true });
       }
@@ -935,41 +1866,107 @@
 
     ensureMap(id, opts) {
       if (this.maps[id]) {
-        setTimeout(() => this.maps[id].invalidateSize(), 120);
+        setTimeout(() => {
+          this.maps[id].invalidateSize();
+          if (id === 'map-1') {
+            this.renderCrowds(id);
+            this.updateUserOnMap(id);
+          }
+        }, 120);
         return this.maps[id];
       }
       return this.initMap(id, opts);
     },
 
-    pinIcon(state, hard) {
+
+    clusterIcon(cluster) {
+      const count = cluster.getChildCount();
+      const markers = cluster.getAllChildMarkers();
+      const free = markers.filter(m => m.options.aeAvailable).length;
+      const hasFree = free > 0;
+      const size = count < 12 ? 42 : (count < 30 ? 50 : 58);
+      return L.divIcon({
+        html: '<div class="ae-cluster' + (hasFree ? ' has-free' : '') + '"><span class="ae-cluster-n">' + count + '</span></div>',
+        className: 'ae-cluster-wrap',
+        iconSize: [size, size],
+        iconAnchor: [size / 2, size / 2]
+      });
+    },
+
+    addPinsToCluster(map, mapId) {
+      if (this.spotCluster) {
+        try { map.removeLayer(this.spotCluster); } catch (e) {}
+        this.spotCluster.clearLayers();
+      }
+      this.spotCluster = L.markerClusterGroup({
+        maxClusterRadius: 72,
+        disableClusteringAtZoom: 17,
+        spiderfyOnMaxZoom: true,
+        showCoverageOnHover: false,
+        chunkedLoading: true,
+        iconCreateFunction: c => this.clusterIcon(c)
+      });
+      this.markers = this.markers || {};
+      this.markers[mapId] = [];
+      SPOTS.forEach((spot, i) => {
+        if (spot.reported) return;
+        const state = spot.available ? 'green' : 'red';
+        const m = L.marker([spot.lat, spot.lng], {
+          icon: this.pinIcon(state, false, spot.community, spot.reported),
+          aeIndex: i,
+          aeAvailable: !!spot.available,
+          aeState: state
+        });
+        m.bindPopup(this.popupHtml(i));
+        m.on('click', () => m.openPopup());
+        this.spotCluster.addLayer(m);
+        this.markers[mapId][i] = m;
+      });
+      this.spotCluster.addTo(map);
+      this.mapLayers[mapId] = this.spotCluster;
+    },
+
+    pinIcon(state, hard, community, reported) {
+      if (community) {
+        return L.divIcon({
+          className: 'pin-wrap' + (reported ? ' pin-reported' : ''),
+          html: '<div class="pin-community"></div>',
+          iconSize: [16, 16], iconAnchor: [8, 8]
+        });
+      }
       const cls = (state === 'green' ? 'pin-green' : 'pin-red') + (hard ? ' hard' : '');
       const big = state === 'green';
       return L.divIcon({
-        className: 'pin-wrap',
+        className: 'pin-wrap' + (reported ? ' pin-reported' : ''),
         html: '<div class="' + cls + '"></div>',
-        iconSize: big ? [18, 18] : [12, 12],
-        iconAnchor: big ? [9, 9] : [6, 6]
+        iconSize: big ? [16, 16] : [12, 12],
+        iconAnchor: big ? [8, 8] : [6, 6]
       });
     },
 
     popupHtml(i) {
       const s = SPOTS[i];
       const title = s.street + ' ' + s.num;
+      const comm = s.community ? '<br><span style="color:var(--amber);font-size:11px">◎ Community</span>' : '';
+      const rep = s.reported ? '' : this.popupReportHtml(i);
       if (s.available) {
         return '<strong>✅ ' + title + '</strong><br><span style="color:#6B7280;font-size:12px">' +
-          s.detail + '</span><button class="popup-btn" onclick="App.go(3)">Claim this Misto →</button>';
+          s.detail + '</span>' + comm +
+          '<button class="popup-btn" onclick="App.go(3)">Claim this Misto →</button>' + rep;
       }
       return '<strong>🔴 Occupied</strong><br><span style="font-weight:600">' + title +
-        '</span><br><span style="color:#6B7280;font-size:12px">' + s.detail + '</span>';
+        '</span><br><span style="color:#6B7280;font-size:12px">' + s.detail + '</span>' + comm + rep;
     },
 
     addPinsToGroup(group, mapId, hard) {
       this.markers = this.markers || {};
       this.markers[mapId] = [];
       SPOTS.forEach((spot, i) => {
+        if (spot.reported) return;
         const state = spot.available ? 'green' : 'red';
+        const near = this.nearbyIndices && this.nearbyIndices.has(i);
         const m = L.marker([spot.lat, spot.lng], {
-          icon: this.pinIcon(state, hard && spot.available)
+          icon: this.pinIcon(state, (hard && spot.available) || (near && spot.available), spot.community, spot.reported)
         }).addTo(group);
         m.bindPopup(this.popupHtml(i));
         m.on('click', () => m.openPopup());
@@ -1002,11 +1999,14 @@
         byStreet[s.street].total++;
         if (s.available) { byStreet[s.street].avail++; byStreet[s.street].flyIdx = idx; }
       });
-      box.innerHTML = Object.entries(byStreet).sort((a, b) => b[1].avail - a[1].avail).map(([name, d]) => {
+      const sorted = Object.entries(byStreet).sort((a, b) => b[1].avail - a[1].avail);
+      const top = sorted.slice(0, 5);
+      const more = sorted.length - top.length;
+      box.innerHTML = top.map(([name, d]) => {
         const click = d.avail ? 'App.flyToSpot(' + d.flyIdx + ')' : 'App.flyToArea(' + d.lat + ',' + d.lng + ')';
-        const badge = d.avail ? '<span class="badge-teal">' + d.avail + ' available</span>' : '<span style="color:var(--muted)">Full</span>';
+        const badge = d.avail ? '<span class="badge-teal">' + d.avail + ' free</span>' : '<span style="color:var(--muted)">Full</span>';
         return '<div class="street-row" onclick="' + click + '"><span>' + (d.avail ? '✅' : '🔴') + ' ' + name + '</span>' + badge + '</div>';
-      }).join('');
+      }).join('') + (more > 0 ? '<p style="font-size:11px;color:var(--muted);padding:8px 0 0">+' + more + ' more streets · zoom map for details</p>' : '');
     },
 
     setMapLock(id, locked) {
@@ -1029,42 +2029,43 @@
       this.addMapControls(map, id);
 
       if (opts.mode === 'home') {
-        const g = L.layerGroup().addTo(map);
-        this.mapLayers[id] = g;
-        this.addPinsToGroup(g, id, false);
-        map.fitBounds(L.latLngBounds(allCoords()), { padding: [36, 36], maxZoom: 17 });
+        this.addPinsToHomeMap(map, id);
+        map.setView(USER_DEFAULT, 17);
+        map.setMinZoom(14);
+        const self = this;
+        map.on('click', e => { if (self.addSpotMode) self.addCommunitySpot(e.latlng.lat, e.latlng.lng); });
+        this.updateUserOnMap(id);
+        this.renderCrowds(id);
       }
       if (opts.mode === 'highlight') {
         const g = L.layerGroup().addTo(map);
         this.mapLayers[id] = g;
-        L.circle(coords(FREE_IDX), {
+        L.circle(coords(getFreeIdx()), {
           radius: 40, color: '#00D4AA', fillColor: '#00D4AA',
           fillOpacity: 0.15, weight: 2
         }).addTo(g);
-        L.marker(coords(FREE_IDX), { icon: this.pinIcon('green', false) })
-          .bindPopup(this.popupHtml(FREE_IDX)).addTo(g);
-        map.setView(coords(FREE_IDX), 17);
+        L.marker(coords(getFreeIdx()), { icon: this.pinIcon('green', false) })
+          .bindPopup(this.popupHtml(getFreeIdx())).addTo(g);
+        map.setView(coords(getFreeIdx()), 17);
       }
       if (opts.mode === 'find') {
         const g = L.layerGroup().addTo(map);
         this.mapLayers[id] = g;
         this.addPinsToGroup(g, id, true);
+        const u = this.getUserPos();
         const route = [];
         for (let i = 0; i <= 24; i++) {
           const f = i / 24;
           route.push([
-            SEEKER[0] + (coords(FREE_IDX)[0] - SEEKER[0]) * f,
-            SEEKER[1] + (coords(FREE_IDX)[1] - SEEKER[1]) * f
+            u[0] + (coords(getFreeIdx())[0] - u[0]) * f,
+            u[1] + (coords(getFreeIdx())[1] - u[1]) * f
           ]);
         }
         L.polyline(route, { color: '#3B82F6', weight: 3, dashArray: '8,10' }).addTo(g);
-        L.marker(SEEKER, {
-          icon: L.divIcon({
-            className: 'seeker-wrap',
-            html: '<div class="seeker-dot"></div>',
-            iconSize: [14, 14], iconAnchor: [7, 7]
-          })
-        }).bindPopup('<strong>You are here</strong><br><span style="color:#6B7280;font-size:12px">180m to free Misto</span>').addTo(g);
+        const uPos = this.getUserPos();
+        L.marker(uPos, {
+          icon: L.divIcon({ className: 'seeker-wrap', html: '<div class="user-loc-dot"></div>', iconSize: [16,16], iconAnchor: [8,8] })
+        }).bindPopup('<strong>You are here</strong><br><span style="color:#6B7280;font-size:12px">Nearby Misto on map</span>').addTo(g);
         map.fitBounds(L.latLngBounds(route), { padding: [40, 40], maxZoom: 17 });
       }
       if (opts.mode === 'nav') map.setView(CENTER, 16);
@@ -1226,7 +2227,7 @@
       this.demoActive = true;
       this.demoAborted = false;
       ['map-1', 'map-2', 'map-3', 'map-4'].forEach(id => {
-        if (this.maps[id]) { this.maps[id].remove(); delete this.maps[id]; delete this.mapLayers[id]; }
+        if (this.maps[id]) { this.maps[id].remove(); delete this.maps[id]; delete this.mapLayers[id]; if (id === 'map-1') this.spotCluster = null; }
       });
       this.markers = {};
       document.querySelector('.phone').classList.add('demo-active');
@@ -1250,24 +2251,24 @@
       this.demoTimers.push(prog);
 
       try {
-        this.coach('🗺 Split 3 live', '19 Misto on the map — watch occupancy update in real time.');
+        this.coach('🗺 Split live', 'Misto across the city — watch occupancy update in real time.');
         map.flyToBounds(L.latLngBounds(allCoords()), { padding: [44, 44], duration: 4, maxZoom: 16 });
         await delay(5200);
         if (this.demoAborted) return;
 
         this.coach('🔴 Pressure zone', 'Zooming into a packed block — typical Sunday evening.');
-        map.flyTo([43.5132, 16.4842], 17, { duration: 2.5 });
+        map.flyTo(coords(getFreeIdx()), 17, { duration: 2.5 });
         await delay(4800);
         if (this.demoAborted) return;
 
         this.coach('✅ Misto available', 'Matice Hrvatske 14 just opened — 0 claims so far.');
-        map.flyTo(coords(FREE_IDX), 18, { duration: 2 });
+        map.flyTo(coords(getFreeIdx()), 18, { duration: 2 });
         await delay(1600);
         await this.waitForLayout();
-        if (this.markers['map-1'] && this.markers['map-1'][FREE_IDX]) {
-          this.markers['map-1'][FREE_IDX].openPopup();
+        if (this.markers['map-1'] && this.markers['map-1'][getFreeIdx()]) {
+          this.markers['map-1'][getFreeIdx()].openPopup();
         }
-        this.highlightMapPoint('map-1', coords(FREE_IDX), 64);
+        this.highlightMapPoint('map-1', coords(getFreeIdx()), 64);
         await delay(4200);
         if (this.demoAborted) return;
         this.clearHighlight();
@@ -1301,7 +2302,7 @@
         await delay(600);
         await this.waitForLayout();
         map = this.maps['map-3'];
-        if (map) map.flyToBounds(L.latLngBounds([SEEKER, coords(FREE_IDX)]), { padding: [50, 50], duration: 2.5, maxZoom: 17 });
+        if (map) map.flyToBounds(L.latLngBounds([SEEKER, coords(getFreeIdx())]), { padding: [50, 50], duration: 2.5, maxZoom: 17 });
         await delay(400);
         await this.highlightEl(document.getElementById('demo-target-find-banner'));
         await delay(4500);
@@ -1313,7 +2314,7 @@
         await delay(600);
         await this.waitForLayout();
         map = this.maps['map-4'];
-        if (map) map.flyTo(coords(FREE_IDX), 17, { duration: 2 });
+        if (map) map.flyTo(coords(getFreeIdx()), 17, { duration: 2 });
         await delay(500);
         await this.highlightEl(document.getElementById('demo-target-nav-timer'));
         if (this.navDemoTimer) clearTimeout(this.navDemoTimer);
@@ -1395,21 +2396,22 @@
         m.bindPopup(this.popupHtml(i));
         m.on('click', () => m.openPopup());
       });
-      L.circle(coords(FREE_IDX), {
+      L.circle(coords(getFreeIdx()), {
         radius: 35, color: '#00D4AA', fillColor: '#00D4AA',
         fillOpacity: 0.2, weight: 2
       }).addTo(overlay);
 
+      const u = this.getUserPos();
       const route = [];
       for (let i = 0; i <= 30; i++) {
         const f = i / 30;
         route.push([
-          SEEKER[0] + (coords(FREE_IDX)[0] - SEEKER[0]) * f,
-          SEEKER[1] + (coords(FREE_IDX)[1] - SEEKER[1]) * f
+          u[0] + (coords(getFreeIdx())[0] - u[0]) * f,
+          u[1] + (coords(getFreeIdx())[1] - u[1]) * f
         ]);
       }
       L.polyline(route, { color: '#3B82F6', weight: 3, dashArray: '8,10' }).addTo(overlay);
-      const seeker = L.marker(SEEKER, {
+      const seeker = L.marker(this.getUserPos(), {
         icon: L.divIcon({
           className: 'seeker-wrap',
           html: '<div class="seeker-dot"></div>',
@@ -1470,8 +2472,7 @@
     },
 
     openQR(merchant) {
-      const canvas = document.getElementById('qr-canvas');
-      generateFakeQR(canvas);
+      renderAeQR(merchant, this.points);
       document.getElementById('qr-merchant').textContent = merchant;
       document.getElementById('qr-modal').classList.add('show');
       let s = 299;
@@ -1484,6 +2485,112 @@
       }, 1000);
     },
 
+    loadSession() {
+      try {
+        const flag = localStorage.getItem('ae_logged_in');
+        const raw = localStorage.getItem('ae_user');
+        if (flag === '0') {
+          this.loggedIn = false;
+          this.user = null;
+        } else if (raw) {
+          this.user = JSON.parse(raw);
+          this.loggedIn = true;
+        }
+      } catch (e) {}
+      this.updateProfileBtn();
+    },
+
+    saveSession() {
+      try {
+        if (this.loggedIn && this.user) {
+          localStorage.setItem('ae_logged_in', '1');
+          localStorage.setItem('ae_user', JSON.stringify(this.user));
+        } else {
+          localStorage.setItem('ae_logged_in', '0');
+          localStorage.removeItem('ae_user');
+        }
+      } catch (e) {}
+    },
+
+    initialsFromName(name) {
+      return name.split(/\s+/).filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase() || '?';
+    },
+
+    updateProfileBtn() {
+      const btn = document.getElementById('profile-btn');
+      if (!btn) return;
+      if (this.loggedIn && this.user) {
+        btn.textContent = this.user.initials || this.initialsFromName(this.user.name);
+        btn.classList.remove('guest');
+        btn.title = this.user.name;
+      } else {
+        btn.textContent = '?';
+        btn.classList.add('guest');
+        btn.title = 'Prijavi se';
+      }
+    },
+
+    openProfile() {
+      this.profileReturn = this.screen;
+      this.go(6);
+    },
+
+    closeProfile() {
+      const back = this.profileReturn != null ? this.profileReturn : 1;
+      this.profileReturn = null;
+      this.go(back);
+    },
+
+    renderProfile() {
+      const guest = document.getElementById('profile-guest');
+      const logged = document.getElementById('profile-logged');
+      if (!guest || !logged) return;
+      if (this.loggedIn && this.user) {
+        guest.style.display = 'none';
+        logged.style.display = 'block';
+        const ini = this.user.initials || this.initialsFromName(this.user.name);
+        const set = (id, text) => { const n = document.getElementById(id); if (n) n.textContent = text; };
+        set('profile-avatar-lg', ini);
+        set('profile-name', this.user.name);
+        set('profile-email', this.user.email);
+        set('profile-stat-pts', String(this.points));
+        const tier = this.points >= 60 ? 'Stalni susjed' : (this.points >= 30 ? 'Redar' : 'Početnik');
+        set('profile-tier', tier + ' · Split');
+      } else {
+        guest.style.display = 'block';
+        logged.style.display = 'none';
+        const email = document.getElementById('login-email');
+        const pass = document.getElementById('login-pass');
+        if (email) email.value = '';
+        if (pass) pass.value = '';
+      }
+    },
+
+    mockLogin(e) {
+      if (e) e.preventDefault();
+      const emailEl = document.getElementById('login-email');
+      const email = (emailEl && emailEl.value.trim()) || 'susjed@ae.hr';
+      const local = email.split('@')[0].replace(/[._]/g, ' ');
+      const name = local.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') || 'Ae! User';
+      this.user = {
+        name: name,
+        email: email,
+        initials: this.initialsFromName(name)
+      };
+      this.loggedIn = true;
+      this.saveSession();
+      this.updateProfileBtn();
+      this.renderProfile();
+    },
+
+    mockLogout() {
+      this.loggedIn = false;
+      this.user = null;
+      this.saveSession();
+      this.updateProfileBtn();
+      this.renderProfile();
+    },
+
     closeQR() {
       document.getElementById('qr-modal').classList.remove('show');
       if (this.qrTimer) clearInterval(this.qrTimer);
@@ -1494,6 +2601,8 @@
   setTimeout(() => { if (App.screen === 0) App.go(1); }, 2500);
   document.getElementById('bottom-nav').style.display = 'none';
   document.getElementById('map-sheet').classList.add('collapsed');
+  App.loadSession();
+  App.setDefaultUserLocation();
   setTimeout(() => App.updateHomeSheet(), 3200);
   </script>
 </body>
