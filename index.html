@@ -1,13 +1,16 @@
 <!DOCTYPE html>
-<html lang="hr">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
+  <meta name="theme-color" content="#0f0f0f" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>Ae! — Demo</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -23,11 +26,26 @@
   </script>
   <style>
     * { box-sizing: border-box; }
-    html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; font-family: 'Inter', system-ui, sans-serif; background: #0f0f0f; }
-    #map { width: 100%; height: 100%; opacity: 0; transition: opacity 1.2s ease; }
+    html {
+      height: 100%;
+      -webkit-text-size-adjust: 100%;
+    }
+    body {
+      margin: 0;
+      padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+      height: 100%;
+      min-height: 100dvh;
+      overflow: hidden;
+      font-family: 'Inter', system-ui, sans-serif;
+      background: #0f0f0f;
+      touch-action: manipulation;
+    }
+    #map { position: fixed; inset: 0; width: 100%; height: 100%; opacity: 0; transition: opacity 1.2s ease; }
     #map.visible { opacity: 1; }
     #map.dimmed { opacity: 0.35; transition: opacity 0.8s ease; }
-    .leaflet-container { background: #0f0f0f; font-family: 'Inter', sans-serif; }
+    .maplibregl-map { background: #0a121c; font-family: 'Inter', sans-serif; }
+    .maplibregl-ctrl-attrib { font-size: 9px; background: rgba(0,0,0,0.45) !important; }
+    .map-marker { background: transparent !important; border: none !important; }
     .pin-wrap, .car-wrap, .street-wrap, .seeker-wrap {
       background: transparent !important;
       border: none !important;
@@ -68,10 +86,35 @@
       0% { transform: scale(1); opacity: 0.85; }
       100% { transform: scale(5); opacity: 0; }
     }
+    @keyframes shockwave-heavy {
+      0% { transform: scale(0.6); opacity: 1; }
+      100% { transform: scale(9); opacity: 0; }
+    }
+    .ripple.heavy-burst {
+      border-width: 3px;
+      border-color: #00ffcc;
+      animation: shockwave-heavy 1.35s ease-out forwards;
+    }
+    @keyframes pin-arrival-pop {
+      0% { transform: scale(1); }
+      30% { transform: scale(2.6); }
+      55% { transform: scale(2.1); }
+      75% { transform: scale(1.5); }
+      100% { transform: scale(1.25); }
+    }
+    .pin-green.parking-arrival {
+      animation: pin-arrival-pop 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+      box-shadow: 0 0 24px rgba(0, 212, 170, 1), 0 0 52px rgba(0, 255, 204, 0.55);
+      font-size: 15px;
+      z-index: 2;
+    }
+    .ripple-wrap.parking-arrival {
+      filter: drop-shadow(0 0 12px rgba(0, 212, 170, 0.9));
+    }
 
     .car-icon {
-      font-size: 22px;
-      filter: drop-shadow(0 2px 6px rgba(0,0,0,0.6));
+      font-size: 26px;
+      filter: drop-shadow(0 4px 10px rgba(0,0,0,0.85));
       line-height: 1;
       transition: transform 0.15s linear;
     }
@@ -203,6 +246,121 @@
       transition: background 0.2s, border-color 0.2s;
     }
     .restart-btn:hover { background: rgba(30,30,30,0.9); border-color: rgba(0,212,170,0.4); }
+
+    #navigate-btn, .restart-btn, #wallet button {
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    @media (max-width: 640px) {
+      .restart-btn {
+        top: max(10px, env(safe-area-inset-top));
+        right: max(10px, env(safe-area-inset-right));
+        padding: 8px 12px;
+        font-size: 11px;
+        max-width: 42vw;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      #toast {
+        top: max(0.5rem, env(safe-area-inset-top));
+        width: calc(100vw - 20px);
+        max-width: none;
+        padding: 12px 14px;
+      }
+
+      #toast-line1, #toast-line2 { font-size: 13px; line-height: 1.35; }
+
+      #problem-card {
+        bottom: max(12px, env(safe-area-inset-bottom));
+        width: calc(100vw - 20px);
+        max-width: none;
+        padding: 14px 16px;
+      }
+
+      #problem-card p:first-child { font-size: 15px; }
+
+      #points-badge {
+        max-width: calc(100vw - 24px);
+        white-space: normal;
+        text-align: center;
+        line-height: 1.3;
+      }
+
+      .phone-frame {
+        top: auto !important;
+        bottom: max(0px, env(safe-area-inset-bottom));
+        left: 50% !important;
+        right: auto !important;
+        width: calc(100vw - 16px);
+        max-width: 360px;
+        max-height: min(58vh, 420px);
+        transform: translate(-50%, 110%);
+      }
+      .phone-frame.show {
+        transform: translate(-50%, 0);
+        opacity: 1;
+      }
+      .phone-frame.hide {
+        transform: translate(-50%, 110%);
+        opacity: 0;
+      }
+
+      .phone-frame .min-h-\[280px\] {
+        min-height: 0;
+      }
+
+      #navigate-btn {
+        min-height: 48px;
+        font-size: 15px;
+        padding-top: 12px;
+        padding-bottom: 12px;
+      }
+
+      #ai-card {
+        bottom: max(72px, calc(env(safe-area-inset-bottom) + 56px));
+        width: calc(100vw - 20px);
+        max-width: none;
+        padding: 10px 12px;
+      }
+
+      #ai-card p { font-size: 11px; line-height: 1.4; }
+
+      #wallet {
+        width: calc(100vw - 20px);
+        max-width: none;
+        max-height: min(88vh, 520px);
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      #wallet-points { font-size: 1.75rem; }
+
+      #end-screen { padding: 20px 16px; }
+      #end-screen h1 { font-size: 3.25rem; line-height: 1; }
+      #end-screen p:nth-of-type(1) { font-size: 1.125rem; }
+      #end-screen p:nth-of-type(2) { font-size: 0.875rem; }
+      #end-screen p:nth-of-type(3) { font-size: 0.8125rem; }
+
+      .street-label {
+        font-size: 9px;
+        max-width: 130px;
+        white-space: normal;
+        line-height: 1.25;
+        padding: 5px 8px;
+      }
+
+      .maplibregl-ctrl-attrib {
+        font-size: 8px !important;
+        max-width: 55vw;
+      }
+    }
+
+    @media (max-width: 380px) {
+      #end-screen h1 { font-size: 2.75rem; }
+    }
   </style>
 </head>
 <body>
@@ -214,8 +372,8 @@
 
   <!-- Phase 1: Problem card -->
   <div id="problem-card" class="overlay-card fixed bottom-8 left-1/2 -translate-x-1/2 z-[800] w-[min(92vw,420px)] p-5 glass">
-    <p class="text-white font-bold text-lg leading-snug">🔴 Split 3 — Nedjelja, 20:15h</p>
-    <p class="text-white/85 font-semibold text-sm mt-2">Sva mjesta zauzeta. Korisnik kruži već 38 min.</p>
+    <p class="text-white font-bold text-lg leading-snug">🔴 Split 3 — Sunday, 20:15h</p>
+    <p class="text-white/85 font-semibold text-sm mt-2">All spots taken. User has been circling for 38 min.</p>
   </div>
 
   <!-- Toast (Phases 2–3) -->
@@ -227,7 +385,7 @@
 
   <!-- Points badge -->
   <div id="points-badge" class="badge-points fixed z-[750] pointer-events-none glass px-3 py-1.5 text-xs font-bold text-[#00D4AA] whitespace-nowrap">
-    +10 Polza bodova earned
+    +10 Polza points earned
   </div>
 
   <!-- Phone frame (Phase 4) -->
@@ -243,12 +401,12 @@
               <div class="w-10 h-10 rounded-xl bg-[#00D4AA] flex items-center justify-center text-[#0f0f0f] font-extrabold text-sm shrink-0">Ae!</div>
               <div class="flex-1 min-w-0">
                 <p class="text-white/60 text-[10px] font-semibold uppercase tracking-wide">Ae!</p>
-                <p class="text-white font-bold text-sm mt-0.5">Slobodno misto 180m od tebe! 🎯</p>
-                <p class="text-white/75 text-xs mt-1">Ulica Matice Hrvatske — stigne za ~2 min</p>
+                <p class="text-white font-bold text-sm mt-0.5">Free spot 180m away! 🎯</p>
+                <p class="text-white/75 text-xs mt-1">Matice Hrvatske Street — arrives in ~2 min</p>
               </div>
             </div>
-            <button type="button" class="btn-glow w-full mt-4 py-2.5 rounded-xl bg-[#00D4AA] text-[#0f0f0f] font-bold text-sm">
-              Navigiraj →
+            <button type="button" id="navigate-btn" class="btn-glow w-full mt-4 py-2.5 rounded-xl bg-[#00D4AA] text-[#0f0f0f] font-bold text-sm">
+              Navigate →
             </button>
           </div>
         </div>
@@ -258,20 +416,20 @@
 
   <!-- AI card (Phase 5) -->
   <div id="ai-card" class="fixed bottom-24 left-1/2 -translate-x-1/2 z-[800] w-[min(92vw,400px)] p-3 glass opacity-0 transition-opacity duration-500 pointer-events-none">
-    <p class="text-white/90 text-xs font-medium text-center">Ae! AI — predviđanje temeljeno na <span class="text-[#00D4AA] font-bold">2.847</span> vožnji u ovom kvartu</p>
+    <p class="text-white/90 text-xs font-medium text-center">Ae! AI — prediction based on <span class="text-[#00D4AA] font-bold">2,847</span> trips in this neighborhood</p>
   </div>
 
   <!-- Wallet (Phase 6) -->
   <div id="wallet" class="wallet-card fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[950] w-[min(92vw,340px)]">
     <div class="glass p-6 text-center border-2 border-[#00D4AA]/20">
       <p class="text-[#00D4AA] font-bold text-lg">💰 Split-Polza</p>
-      <p class="text-white font-extrabold text-3xl mt-2" id="wallet-points">Tvoji bodovi: 10</p>
+      <p class="text-white font-extrabold text-3xl mt-2" id="wallet-points">Your Points: 10</p>
       <div class="border-t border-white/10 my-4"></div>
-      <p class="text-white/80 font-semibold text-sm">🎁 Zamijeni za:</p>
-      <p class="text-white text-sm mt-2">☕ Kava u Kafiću Žnjan</p>
-      <p class="text-white text-sm mt-1">🚌 Promet karta</p>
+      <p class="text-white/80 font-semibold text-sm">🎁 Redeem for:</p>
+      <p class="text-white text-sm mt-2">☕ Coffee at Caffe Bar Znjan</p>
+      <p class="text-white text-sm mt-1">🚌 Promet Bus Ticket</p>
       <button type="button" class="mt-4 px-6 py-2 rounded-xl bg-white/10 text-[#00D4AA] font-bold text-sm border border-[#00D4AA]/30">
-        Iskoristi → <span class="text-lg">▣</span>
+        Redeem →
       </button>
     </div>
   </div>
@@ -279,12 +437,12 @@
   <!-- End card (Phase 7) -->
   <div id="end-screen" class="end-screen fixed inset-0 z-[1000] flex flex-col items-center justify-center text-center px-6">
     <h1 class="text-6xl md:text-7xl font-extrabold text-white tracking-tight">Ae!</h1>
-    <p class="text-[#00D4AA] text-xl md:text-2xl font-bold mt-4">Splitska solidarnost na djelu.</p>
-    <p class="text-white/70 text-base mt-3">Parking • Pazar • Plaže • Eventi</p>
-    <p class="text-white/50 text-sm mt-6 max-w-md">Nula klikova. Nula betona. Samo dišpet i AI.</p>
+    <p class="text-[#00D4AA] text-xl md:text-2xl font-bold mt-4">Split solidarity in action.</p>
+    <p class="text-white/70 text-base mt-3">Parking • Green Market • Beaches • Events</p>
+    <p class="text-white/50 text-sm mt-6 max-w-md">Zero clicks. Zero concrete. Just pure grit and AI.</p>
   </div>
 
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
   <script>
 (function () {
   'use strict';
@@ -308,32 +466,68 @@
     [43.5122, 16.4815]
   ];
   const STREET_LABELS = [
-    { lat: 43.5138, lng: 16.4825, text: 'Matice Hrvatske: 92% slobodno ✅' },
-    { lat: 43.5126, lng: 16.4838, text: 'Domovinskog rata: 34% slobodno 🟡' },
-    { lat: 43.5134, lng: 16.4852, text: 'Šoltanska: 11% slobodno 🔴' }
+    { lat: 43.5138, lng: 16.4825, text: 'Matice Hrvatske: 92% free ✅', color: '#00D4AA', fillColor: '#00D4AA' },
+    { lat: 43.5126, lng: 16.4838, text: 'Domovinskog rata: 34% free 🟡', color: '#EAB308', fillColor: '#EAB308' },
+    { lat: 43.5134, lng: 16.4852, text: 'Soltanska: 11% free 🔴', color: '#FF4444', fillColor: '#FF4444' }
   ];
 
-  let map, pinMarkers = [], streetMarkers = [];
+  const MAP_CENTER = [16.4827, 43.5133];
+  const MAP_3D = { pitch: 58, bearing: -32 };
+
+  let map, pinMarkers = [], streetMarkers = [], streetCircles = [];
   let loopCarMarker, departCarMarker, seekerMarker;
-  let routeLine, routeFull = [];
+  let routeFull = [];
   let animFrame = null;
   let loopAnimId = null;
   let seekerAnimId = null;
   let demoTimers = [];
+  let navigateClickCleanup = null;
+  let parkingCelebrateTimer = null;
+  let mapLayersReady = false;
 
   function $(id) { return document.getElementById(id); }
+  function latLngToLngLat(ll) { return [ll[1], ll[0]]; }
+  function lngLatToLatLng(ll) { return [ll[1], ll[0]]; }
   function delay(ms) {
     return new Promise(function (resolve) {
       const t = setTimeout(resolve, ms);
       demoTimers.push(t);
     });
   }
+  function clearNavigateWait() {
+    if (navigateClickCleanup) {
+      navigateClickCleanup();
+      navigateClickCleanup = null;
+    }
+  }
+  function waitForNavigateClick() {
+    return new Promise(function (resolve) {
+      const btn = $('navigate-btn');
+      if (!btn) {
+        resolve();
+        return;
+      }
+      function onNavigate() {
+        clearNavigateWait();
+        resolve();
+      }
+      btn.addEventListener('click', onNavigate);
+      navigateClickCleanup = function () {
+        btn.removeEventListener('click', onNavigate);
+      };
+    });
+  }
   function clearDemo() {
     demoTimers.forEach(clearTimeout);
     demoTimers = [];
+    clearNavigateWait();
     if (animFrame) cancelAnimationFrame(animFrame);
     if (loopAnimId) cancelAnimationFrame(loopAnimId);
     if (seekerAnimId) cancelAnimationFrame(seekerAnimId);
+    if (parkingCelebrateTimer) {
+      clearTimeout(parkingCelebrateTimer);
+      parkingCelebrateTimer = null;
+    }
   }
 
   function playDing() {
@@ -365,39 +559,206 @@
     } catch (e) { /* silent */ }
   }
 
+  function playLevelUpChime() {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const notes = [392, 523.25, 659.25, 783.99, 1046.5];
+      notes.forEach(function (freq, i) {
+        const t0 = ctx.currentTime + i * 0.065;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, t0);
+        gain.gain.setValueAtTime(0.0001, t0);
+        gain.gain.exponentialRampToValueAtTime(0.22, t0 + 0.04);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.42);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(t0);
+        osc.stop(t0 + 0.45);
+      });
+    } catch (e) { /* silent */ }
+  }
+
+  function celebrateParkingArrival() {
+    playLevelUpChime();
+    const marker = pinMarkers[FREE_SPOT_INDEX];
+    if (!marker) return;
+    const root = marker.getElement();
+    if (!root) return;
+    const wrap = root.querySelector('.ripple-wrap');
+    const pin = root.querySelector('.pin-green');
+    if (!wrap || !pin) return;
+
+    wrap.classList.add('parking-arrival');
+    pin.classList.add('parking-arrival');
+
+    wrap.querySelectorAll('.heavy-burst').forEach(function (n) { n.remove(); });
+    for (let i = 0; i < 4; i++) {
+      const burst = document.createElement('div');
+      burst.className = 'ripple heavy-burst';
+      burst.style.animationDelay = (i * 0.16) + 's';
+      wrap.appendChild(burst);
+    }
+
+    pin.textContent = '🅿️';
+
+    if (parkingCelebrateTimer) clearTimeout(parkingCelebrateTimer);
+    parkingCelebrateTimer = setTimeout(function () {
+      pin.textContent = '✅';
+      pin.classList.remove('parking-arrival');
+      wrap.classList.remove('parking-arrival');
+      pin.style.transform = '';
+      pin.style.fontSize = '';
+      wrap.querySelectorAll('.heavy-burst').forEach(function (n) { n.remove(); });
+      parkingCelebrateTimer = null;
+    }, 1500);
+    demoTimers.push(parkingCelebrateTimer);
+  }
+
   function disableMapInteraction() {
-    map.dragging.disable();
-    map.touchZoom.disable();
-    map.doubleClickZoom.disable();
-    map.scrollWheelZoom.disable();
+    if (!map) return;
+    map.dragPan.disable();
+    map.scrollZoom.disable();
     map.boxZoom.disable();
+    map.doubleClickZoom.disable();
+    map.touchZoomRotate.disable();
     map.keyboard.disable();
-    if (map.tap) map.tap.disable();
+  }
+
+  function setMapView(latLng, zoom, animate) {
+    map[animate ? 'flyTo' : 'jumpTo']({
+      center: latLngToLngLat(latLng),
+      zoom: zoom != null ? zoom : map.getZoom(),
+      pitch: MAP_3D.pitch,
+      bearing: MAP_3D.bearing,
+      duration: animate ? 2200 : 0
+    });
+  }
+
+  function findSymbolLayerAnchor() {
+    const layers = map.getStyle().layers;
+    for (let i = 0; i < layers.length; i++) {
+      if (layers[i].type === 'symbol') return layers[i].id;
+    }
+    return undefined;
+  }
+
+  function add3DBuildings() {
+    if (!map || map.getLayer('ae-3d-buildings')) return;
+    const srcName = Object.keys(map.getStyle().sources).find(function (k) {
+      return map.getStyle().sources[k].type === 'vector';
+    });
+    if (!srcName) return;
+    map.addLayer({
+      id: 'ae-3d-buildings',
+      source: srcName,
+      'source-layer': 'building',
+      type: 'fill-extrusion',
+      minzoom: 13,
+      paint: {
+        'fill-extrusion-color': [
+          'interpolate', ['linear'], ['coalesce', ['get', 'render_height'], ['get', 'height'], 10],
+          0, '#152238',
+          40, '#1a3048',
+          90, '#234a62'
+        ],
+        'fill-extrusion-height': ['coalesce', ['get', 'render_height'], ['get', 'height'], 14],
+        'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], 0],
+        'fill-extrusion-opacity': 0.92
+      }
+    }, findSymbolLayerAnchor());
+  }
+
+  function initMapDemoLayers() {
+    if (map.getSource('nav-route')) return;
+    map.addSource('nav-route', {
+      type: 'geojson',
+      data: { type: 'Feature', geometry: { type: 'LineString', coordinates: [] } }
+    });
+    map.addLayer({
+      id: 'nav-route-glow',
+      type: 'line',
+      source: 'nav-route',
+      paint: { 'line-color': '#00e5ff', 'line-width': 14, 'line-opacity': 0.35, 'line-blur': 2 }
+    });
+    map.addLayer({
+      id: 'nav-route-line',
+      type: 'line',
+      source: 'nav-route',
+      paint: { 'line-color': '#6dfff0', 'line-width': 5, 'line-opacity': 1 }
+    });
+    mapLayersReady = true;
+  }
+
+  function circleRing(lat, lng, radiusM, steps) {
+    const coords = [];
+    const r = 6378137;
+    for (let i = 0; i <= steps; i++) {
+      const a = (i / steps) * Math.PI * 2;
+      const dx = radiusM * Math.cos(a);
+      const dy = radiusM * Math.sin(a);
+      const dLng = (dx / r) * (180 / Math.PI) / Math.cos(lat * Math.PI / 180);
+      const dLat = (dy / r) * (180 / Math.PI);
+      coords.push([lng + dLng, lat + dLat]);
+    }
+    return coords;
+  }
+
+  function fadePredictionCircle(zone, toFillOpacity, toStrokeOpacity, duration, onDone) {
+    const fromFill = map.getPaintProperty(zone.fillLayer, 'fill-opacity') || 0;
+    const fromStroke = map.getPaintProperty(zone.lineLayer, 'line-opacity') || 0;
+    const start = performance.now();
+    function tick(now) {
+      const p = Math.min(1, (now - start) / duration);
+      const ease = 1 - Math.pow(1 - p, 3);
+      map.setPaintProperty(zone.fillLayer, 'fill-opacity', fromFill + (toFillOpacity - fromFill) * ease);
+      map.setPaintProperty(zone.lineLayer, 'line-opacity', fromStroke + (toStrokeOpacity - fromStroke) * ease);
+      if (p < 1) requestAnimationFrame(tick);
+      else if (onDone) onDone();
+    }
+    requestAnimationFrame(tick);
+  }
+
+  function removeStreetAiLayers() {
+    streetMarkers.forEach(function (m) { m.remove(); });
+    streetMarkers = [];
+    streetCircles.forEach(function (z) {
+      if (map.getLayer(z.fillLayer)) map.removeLayer(z.fillLayer);
+      if (map.getLayer(z.lineLayer)) map.removeLayer(z.lineLayer);
+      if (map.getSource(z.sourceId)) map.removeSource(z.sourceId);
+    });
+    streetCircles = [];
+  }
+
+  function createHtmlMarker(latlng, html, className) {
+    const el = document.createElement('div');
+    el.className = (className || 'map-marker') + ' pin-wrap';
+    el.innerHTML = html;
+    const marker = new maplibregl.Marker({ element: el, anchor: 'center' })
+      .setLngLat(latLngToLngLat(latlng))
+      .addTo(map);
+    return {
+      setLatLng: function (ll) { marker.setLngLat(latLngToLngLat(ll)); },
+      getLatLng: function () { return lngLatToLatLng(marker.getLngLat().toArray()); },
+      remove: function () { marker.remove(); },
+      getElement: function () { return el; }
+    };
   }
 
   function createRedPin(latlng) {
-    return L.marker(latlng, {
-      icon: L.divIcon({ className: 'pin-wrap', html: '<div class="pin-red"></div>', iconSize: [18, 18], iconAnchor: [9, 9] }),
-      interactive: false
-    });
+    return createHtmlMarker(latlng, '<div class="pin-red"></div>', 'car-wrap');
   }
 
   function createGreenPin(latlng) {
     const html = '<div class="ripple-wrap">' +
       '<div class="ripple wave1"></div><div class="ripple wave2"></div><div class="ripple wave3"></div>' +
       '<div class="pin-green">✅</div></div>';
-    return L.marker(latlng, {
-      icon: L.divIcon({ className: 'pin-wrap', html: html, iconSize: [22, 22], iconAnchor: [11, 11] }),
-      interactive: false
-    });
+    return createHtmlMarker(latlng, html, 'car-wrap');
   }
 
-  function createCarMarker(latlng, zIndex) {
-    return L.marker(latlng, {
-      icon: L.divIcon({ className: 'car-wrap', html: '<div class="car-icon">🚗</div>', iconSize: [24, 24], iconAnchor: [12, 12] }),
-      interactive: false,
-      zIndexOffset: zIndex || 500
-    });
+  function createCarMarker(latlng) {
+    return createHtmlMarker(latlng, '<div class="car-icon">🚗</div>', 'car-wrap');
   }
 
   function distSegment(a, b) {
@@ -452,7 +813,7 @@
 
   function stopLoopCar() {
     if (loopAnimId) { cancelAnimationFrame(loopAnimId); loopAnimId = null; }
-    if (loopCarMarker) { map.removeLayer(loopCarMarker); loopCarMarker = null; }
+    if (loopCarMarker) { loopCarMarker.remove(); loopCarMarker = null; }
   }
 
   function setToast(bg, line1, line2, showCountdown) {
@@ -466,11 +827,21 @@
 
   function positionBadge() {
     const spot = pinMarkers[FREE_SPOT_INDEX];
-    if (!spot) return;
-    const pt = map.latLngToContainerPoint(spot.getLatLng());
+    if (!spot || !map) return;
+    const ll = spot.getLatLng();
+    const pt = map.project(latLngToLngLat(ll));
     const badge = $('points-badge');
-    badge.style.left = (pt.x + 28) + 'px';
-    badge.style.top = (pt.y - 12) + 'px';
+    const pad = 10;
+    const w = badge.offsetWidth || 120;
+    const h = badge.offsetHeight || 32;
+    let left = pt.x + 28;
+    let top = pt.y - 12;
+    const maxLeft = map.getSize().x - w - pad;
+    const maxTop = map.getSize().y - h - pad;
+    left = Math.max(pad, Math.min(left, maxLeft));
+    top = Math.max(pad + 72, Math.min(top, maxTop));
+    badge.style.left = left + 'px';
+    badge.style.top = top + 'px';
   }
 
   function buildRoute(from, to) {
@@ -485,35 +856,36 @@
 
   function animateRouteDraw(pts, duration, onDone) {
     routeFull = pts;
-    if (routeLine) map.removeLayer(routeLine);
-    routeLine = L.polyline([pts[0]], {
-      color: '#3B82F6',
-      weight: 3,
-      opacity: 0.85,
-      dashArray: '8, 10',
-      className: 'route-line',
-      interactive: false
-    }).addTo(map);
-
+    if (!mapLayersReady) initMapDemoLayers();
+    const coords = pts.map(latLngToLngLat);
     const start = performance.now();
     function tick(now) {
       const p = Math.min(1, (now - start) / duration);
-      const count = Math.max(2, Math.floor(p * pts.length));
-      routeLine.setLatLngs(pts.slice(0, count));
+      const count = Math.max(2, Math.floor(p * coords.length));
+      map.getSource('nav-route').setData({
+        type: 'Feature',
+        geometry: { type: 'LineString', coordinates: coords.slice(0, count) }
+      });
       if (p < 1) animFrame = requestAnimationFrame(tick);
       else if (onDone) onDone();
     }
     animFrame = requestAnimationFrame(tick);
   }
 
-  function animateSeekerAlong(pts, duration) {
+  function animateSeekerAlong(pts, duration, onArrive) {
     const start = performance.now();
+    let arrived = false;
     function tick(now) {
       const p = Math.min(1, (now - start) / duration);
       const pos = interpolatePath(pts, p);
-      const ahead = interpolatePath(pts, Math.min(1, p + 0.02));
       seekerMarker.setLatLng(pos);
-      if (p < 1) seekerAnimId = requestAnimationFrame(tick);
+      if (p < 1) {
+        seekerAnimId = requestAnimationFrame(tick);
+      } else if (!arrived) {
+        arrived = true;
+        seekerAnimId = null;
+        if (onArrive) onArrive();
+      }
     }
     seekerAnimId = requestAnimationFrame(tick);
   }
@@ -537,7 +909,7 @@
       if (p < 1) {
         animFrame = requestAnimationFrame(tick);
       } else if (departCarMarker) {
-        map.removeLayer(departCarMarker);
+        departCarMarker.remove();
         departCarMarker = null;
       }
     }
@@ -547,9 +919,8 @@
   function transformPinToGreen() {
     const old = pinMarkers[FREE_SPOT_INDEX];
     const latlng = old.getLatLng();
-    map.removeLayer(old);
+    old.remove();
     const green = createGreenPin(latlng);
-    green.addTo(map);
     pinMarkers[FREE_SPOT_INDEX] = green;
   }
 
@@ -566,17 +937,17 @@
     $('problem-card').classList.remove('show', 'hide');
     $('points-badge').classList.remove('show');
     $('toast').style.background = '';
-
-    pinMarkers.forEach(function (m) { map.removeLayer(m); });
+    pinMarkers.forEach(function (m) { m.remove(); });
     pinMarkers = [];
-    streetMarkers.forEach(function (m) { map.removeLayer(m); });
-    streetMarkers = [];
-    if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
-    if (seekerMarker) { map.removeLayer(seekerMarker); seekerMarker = null; }
+    removeStreetAiLayers();
+    if (map.getSource('nav-route')) {
+      map.getSource('nav-route').setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: [] } });
+    }
+    if (seekerMarker) { seekerMarker.remove(); seekerMarker = null; }
     stopLoopCar();
-    if (departCarMarker) { map.removeLayer(departCarMarker); departCarMarker = null; }
+    if (departCarMarker) { departCarMarker.remove(); departCarMarker = null; }
 
-    map.setView([43.5133, 16.4827], 16);
+    setMapView([43.5133, 16.4827], 16.8, false);
     disableMapInteraction();
 
     // PHASE 1 — Problem (0–8s)
@@ -584,18 +955,14 @@
     mapEl.classList.add('visible');
 
     PARKING.forEach(function (coords) {
-      const m = createRedPin(coords);
-      m.addTo(map);
-      pinMarkers.push(m);
+      pinMarkers.push(createRedPin(coords));
     });
 
-    loopCarMarker = createCarMarker(CAR_LOOP[0], 600);
-    loopCarMarker.addTo(map);
+    loopCarMarker = createCarMarker(CAR_LOOP[0]);
     startLoopCar();
 
     await delay(400);
     $('problem-card').classList.add('show');
-
     await delay(8200);
     $('problem-card').classList.add('hide');
 
@@ -605,12 +972,10 @@
 
     stopLoopCar();
     const spot3 = PARKING[FREE_SPOT_INDEX];
-    departCarMarker = createCarMarker(spot3, 700);
-    departCarMarker.addTo(map);
+    departCarMarker = createCarMarker(spot3);
 
-    setToast('#3B82F6', 'Ae! detektirao: spojen na Bluetooth auta 🚗', 'Automatsko oslobađanje mjesta za 5s...', true);
+    setToast('#3B82F6', 'Ae! detected: Connected to car\'s Bluetooth 🚗', 'Automatic spot release in 5s...', true);
     $('toast').classList.add('show');
-
     for (let n = 5; n >= 1; n--) {
       const cd = $('toast-countdown');
       cd.textContent = String(n);
@@ -624,7 +989,15 @@
     // PHASE 3 — Spot Opens (18–28s)
     transformPinToGreen();
 
-    setToast('rgba(0,212,170,0.95)', '🟢 Misto slobodno! Ulica Matice Hrvatske br. 14', '', false);
+    map.flyTo({
+      center: latLngToLngLat(spot3),
+      zoom: 17.4,
+      pitch: 60,
+      bearing: -28,
+      duration: 2500
+    });
+
+    setToast('rgba(0,212,170,0.95)', '🟢 Spot Available! Matice Hrvatske St. No. 14', '', false);
     $('toast').style.background = 'rgba(0,80,65,0.92)';
 
     animateCarAway(spot3, 3200);
@@ -639,45 +1012,56 @@
     $('toast').classList.remove('show');
     $('points-badge').classList.remove('show');
 
-    // PHASE 4 — Notification (28–40s)
+    // PHASE 4 — Notification (pauses until user taps Navigate)
     $('phone-frame').classList.add('show');
-
-    seekerMarker = L.marker(SEEKER_START, {
-      icon: L.divIcon({ className: 'seeker-wrap', html: '<div class="seeker-dot"></div>', iconSize: [14, 14], iconAnchor: [7, 7] }),
-      interactive: false,
-      zIndexOffset: 400
-    }).addTo(map);
+    seekerMarker = createHtmlMarker(SEEKER_START, '<div class="seeker-dot"></div>', 'seeker-wrap');
 
     const freeSpot = PARKING[FREE_SPOT_INDEX];
     const routePts = buildRoute(SEEKER_START, freeSpot);
 
-    await delay(800);
+    await waitForNavigateClick();
+
+    playDing();
+    $('phone-frame').classList.add('hide');
+    $('phone-frame').classList.remove('show');
+
+    map.flyTo({
+      center: latLngToLngLat(freeSpot),
+      zoom: 17.2,
+      pitch: 62,
+      bearing: -24,
+      duration: 2200
+    });
+
     animateRouteDraw(routePts, 2200, function () {
-      animateSeekerAlong(routePts, 6500);
+      animateSeekerAlong(routePts, 6500, celebrateParkingArrival);
     });
 
     await delay(11500);
-    $('phone-frame').classList.add('hide');
-    $('phone-frame').classList.remove('show');
     if (seekerAnimId) cancelAnimationFrame(seekerAnimId);
 
-    // PHASE 5 — AI Layer (40–48s)
+    // PHASE 5 — AI Layer (prediction zones + labels)
     STREET_LABELS.forEach(function (s, i) {
-      const m = L.marker([s.lat, s.lng], {
-        icon: L.divIcon({
-          className: 'street-wrap',
-          html: '<div class="street-label" id="street-' + i + '">' + s.text + '</div>',
-          iconSize: [1, 1],
-          iconAnchor: [0, 0]
-        }),
-        interactive: false
+      const sourceId = 'ai-zone-' + i;
+      const fillLayer = sourceId + '-fill';
+      const lineLayer = sourceId + '-line';
+      map.addSource(sourceId, {
+        type: 'geojson',
+        data: { type: 'Feature', geometry: { type: 'Polygon', coordinates: [circleRing(s.lat, s.lng, 60, 40)] } }
       });
-      m.addTo(map);
-      streetMarkers.push(m);
+      map.addLayer({ id: fillLayer, type: 'fill', source: sourceId, paint: { 'fill-color': s.fillColor, 'fill-opacity': 0 } });
+      map.addLayer({ id: lineLayer, type: 'line', source: sourceId, paint: { 'line-color': s.color, 'line-opacity': 0, 'line-width': 2 } });
+      const zone = { sourceId: sourceId, fillLayer: fillLayer, lineLayer: lineLayer };
+      streetCircles.push(zone);
+
+      streetMarkers.push(createHtmlMarker([s.lat, s.lng], '<div class="street-label" id="street-' + i + '">' + s.text + '</div>', 'street-wrap'));
+
+      const fadeDelay = 200 + i * 350;
       setTimeout(function () {
         const el = document.getElementById('street-' + i);
         if (el) el.classList.add('show');
-      }, 200 + i * 350);
+        fadePredictionCircle(zone, 0.15, 0.9, 520);
+      }, fadeDelay);
     });
 
     await delay(300);
@@ -692,6 +1076,11 @@
         if (lbl) lbl.classList.remove('show');
       }
     });
+    streetCircles.forEach(function (c) {
+      fadePredictionCircle(c, 0, 0, 450);
+    });
+    await delay(480);
+    removeStreetAiLayers();
 
     // PHASE 6 — Wallet (48–56s)
     mapEl.classList.add('dimmed');
@@ -715,21 +1104,31 @@
   }
 
   function init() {
-    map = L.map('map', {
-      center: [43.5133, 16.4827],
-      zoom: 16,
-      zoomControl: false,
+    map = new maplibregl.Map({
+      container: 'map',
+      style: 'https://tiles.openfreemap.org/styles/dark',
+      center: MAP_CENTER,
+      zoom: 16.8,
+      pitch: MAP_3D.pitch,
+      bearing: MAP_3D.bearing,
+      antialias: true,
       attributionControl: true
     });
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
-      subdomains: 'abcd',
-      maxZoom: 20
-    }).addTo(map);
+    map.on('load', function () {
+      add3DBuildings();
+      initMapDemoLayers();
+      disableMapInteraction();
+      runDemo();
+    });
 
-    disableMapInteraction();
-    runDemo();
+    function onMapResize() {
+      if (map) map.resize();
+    }
+    window.addEventListener('resize', onMapResize);
+    window.addEventListener('orientationchange', function () {
+      setTimeout(onMapResize, 150);
+    });
   }
 
   if (document.readyState === 'loading') {
