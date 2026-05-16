@@ -100,7 +100,9 @@
     /* Map shared */
     .map-box { flex: 1; position: relative; min-height: 0; }
     .leaflet-map { width: 100%; height: 100%; }
-    .leaflet-container { background: var(--bg); font-family: inherit; }
+    .leaflet-container { background: var(--bg); font-family: inherit; touch-action: none; }
+    .leaflet-grab { cursor: grab; }
+    .leaflet-dragging .leaflet-grab { cursor: grabbing; }
     .pin-wrap, .seeker-wrap { background: transparent !important; border: none !important; }
     .pin-red {
       width: 14px; height: 14px; background: var(--red);
@@ -129,6 +131,27 @@
       box-shadow: 0 8px 32px rgba(0,0,0,0.5);
     }
     .leaflet-popup-tip { background: var(--surface); }
+    .leaflet-popup-content { margin: 12px 14px; font-size: 13px; line-height: 1.45; }
+    .leaflet-control-zoom a,
+    .map-recenter-btn {
+      background: var(--surface) !important;
+      color: var(--text) !important;
+      border-color: var(--border) !important;
+      width: 36px !important;
+      height: 36px !important;
+      line-height: 36px !important;
+      font-size: 18px !important;
+    }
+    .leaflet-control-zoom a:hover,
+    .map-recenter-btn:hover { background: #1c1c26 !important; color: var(--teal) !important; }
+    .map-recenter-wrap { border: none !important; box-shadow: none !important; }
+    .map-recenter-btn {
+      display: flex !important; align-items: center; justify-content: center;
+      text-decoration: none !important; border-radius: 0 0 4px 4px !important;
+    }
+    .map-box.has-sheet .leaflet-bottom.leaflet-right { bottom: calc(36% + 8px) !important; }
+    .map-find .leaflet-bottom.leaflet-right { bottom: 8px !important; }
+    .nav-map .leaflet-bottom.leaflet-right { bottom: 140px !important; }
     .popup-btn {
       display: block; width: 100%; margin-top: 10px; padding: 10px;
       background: var(--teal); color: var(--bg); border: none;
@@ -143,7 +166,9 @@
       background: rgba(10,10,15,0.85);
       backdrop-filter: blur(16px);
       border-bottom: 1px solid var(--border);
+      pointer-events: none;
     }
+    .top-bar > * { pointer-events: auto; }
     .logo-sm { font-weight: 900; font-size: 20px; color: var(--teal); }
     .top-right { display: flex; align-items: center; gap: 10px; }
     .avatar {
@@ -159,6 +184,7 @@
     }
     .ai-live {
       position: absolute; top: 64px; right: 12px; z-index: 500;
+      pointer-events: none;
       font-size: 11px; font-weight: 700; padding: 8px 12px;
       border-radius: 20px; background: rgba(19,19,26,0.92);
       border: 1px solid rgba(0,212,170,0.4);
@@ -178,10 +204,27 @@
       border-radius: 20px 20px 0 0;
       padding: 12px 16px 16px;
       overflow-y: auto;
+      transition: height 0.3s ease, min-height 0.3s ease;
+      -webkit-overflow-scrolling: touch;
+    }
+    .bottom-sheet.collapsed {
+      height: 72px; min-height: 72px;
+      overflow: hidden;
+    }
+    .bottom-sheet.collapsed .sheet-body { display: none; }
+    .bottom-sheet.collapsed .sheet-hint { display: block; }
+    .sheet-hint {
+      display: none; font-size: 12px; color: var(--muted);
+      text-align: center; margin-top: 4px;
     }
     .sheet-handle {
-      width: 40px; height: 4px; background: rgba(255,255,255,0.2);
-      border-radius: 2px; margin: 0 auto 12px;
+      width: 48px; height: 28px; margin: 0 auto 8px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; touch-action: manipulation;
+    }
+    .sheet-handle::before {
+      content: ''; width: 40px; height: 4px;
+      background: rgba(255,255,255,0.25); border-radius: 2px;
     }
     .sheet-title { font-weight: 700; font-size: 16px; }
     .occ-label { font-size: 12px; color: var(--muted); margin: 8px 0 6px; }
@@ -434,6 +477,70 @@
     #qr-canvas { display: block; margin: 16px auto; border-radius: 8px; }
     .qr-expiry { color: var(--teal); font-weight: 600; margin-top: 12px; }
     input, select, textarea { font-size: 16px; }
+
+    .demo-btn-top {
+      font-size: 11px; font-weight: 700; padding: 6px 10px;
+      border-radius: 8px; border: 1px solid rgba(0,212,170,0.5);
+      background: rgba(0,212,170,0.12); color: var(--teal);
+      cursor: pointer; font-family: inherit; min-height: 32px;
+    }
+    .demo-btn-top:disabled { opacity: 0.4; cursor: not-allowed; }
+    .phone.demo-active .bottom-nav,
+    .phone.demo-active .nav-item { pointer-events: none; opacity: 0.45; }
+    .phone.demo-active .back-btn { pointer-events: none; opacity: 0.35; }
+
+    #demo-ui {
+      position: absolute; inset: 0; z-index: 2000;
+      pointer-events: none; display: none;
+    }
+    #demo-ui.active { display: block; }
+    #demo-ui .demo-progress {
+      position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: rgba(255,255,255,0.08); z-index: 2001;
+    }
+    #demo-progress-fill {
+      height: 100%; width: 0%; background: var(--teal);
+      transition: width 0.15s linear;
+      box-shadow: 0 0 12px rgba(0,212,170,0.6);
+    }
+    #demo-spotlight {
+      position: absolute; border: 2px solid var(--teal);
+      border-radius: 14px; box-shadow: 0 0 0 9999px rgba(0,0,0,0.72);
+      transition: top 0.45s ease, left 0.45s ease, width 0.45s ease, height 0.45s ease;
+      opacity: 0; pointer-events: none; z-index: 2002;
+    }
+    #demo-spotlight.show { opacity: 1; }
+    #demo-coach {
+      position: absolute; left: 16px; right: 16px; bottom: 20px;
+      padding: 14px 16px; border-radius: 14px;
+      background: rgba(19,19,26,0.96); border: 1px solid rgba(0,212,170,0.45);
+      text-align: center; z-index: 2003;
+      transform: translateY(12px); opacity: 0;
+      transition: transform 0.35s ease, opacity 0.35s ease;
+    }
+    #demo-coach.show { transform: translateY(0); opacity: 1; }
+    #demo-coach h4 { font-size: 15px; font-weight: 700; color: var(--teal); }
+    #demo-coach p { font-size: 13px; color: var(--muted); margin-top: 6px; line-height: 1.45; }
+    #demo-skip {
+      position: absolute; top: 12px; right: 12px; z-index: 2004;
+      pointer-events: auto; padding: 8px 14px; border-radius: 10px;
+      border: 1px solid var(--border); background: rgba(19,19,26,0.9);
+      color: var(--text); font-size: 12px; font-weight: 600;
+      cursor: pointer; font-family: inherit;
+    }
+    .pin-demo-pulse {
+      animation: demo-pin-flash 0.9s ease-in-out infinite !important;
+      box-shadow: 0 0 20px rgba(0,212,170,1) !important;
+    }
+    @keyframes demo-pin-flash {
+      50% { transform: scale(1.4); }
+    }
+    .sheet-streets { max-height: 120px; overflow-y: auto; }
+    .pin-amber {
+      width: 14px; height: 14px; background: var(--amber);
+      border: 2px solid #fff; border-radius: 50%;
+      box-shadow: 0 0 10px rgba(245,158,11,0.8);
+    }
   </style>
 </head>
 <body>
@@ -451,30 +558,29 @@
 
         <!-- SCREEN 1: Map -->
         <section id="screen-1" class="screen">
-          <div class="map-box">
+          <div class="map-box has-sheet">
             <div id="map-1" class="leaflet-map"></div>
             <header class="top-bar">
               <span class="logo-sm">Ae!</span>
               <div class="top-right">
+                <button type="button" id="demo-start-btn" class="demo-btn-top" onclick="App.startDemo()">▶ Demo</button>
                 <div class="avatar">LK</div>
-                <span class="pts-badge" id="pts-top">47 pts</span>
+                <span class="pts-badge" id="pts-top">47 Gušti</span>
               </div>
             </header>
             <div class="ai-live"><span class="ai-dot"></span> ◉ AI LIVE</div>
-            <div class="bottom-sheet">
-              <div class="sheet-handle"></div>
+            <div class="bottom-sheet" id="map-sheet">
+              <div class="sheet-handle" onclick="App.toggleSheet()" role="button" aria-label="Toggle panel"></div>
+              <p class="sheet-hint">Tap to see streets &amp; actions · pinch map to zoom</p>
+              <div class="sheet-body">
               <p class="sheet-title">Split 3 — 20:15h</p>
-              <p class="occ-label">6 of 7 spots taken</p>
-              <div class="occ-bar"><div class="occ-red"></div><div class="occ-teal"></div></div>
-              <div class="street-row" onclick="App.go(3)">
-                <span>✅ Matice Hrvatske</span>
-                <span class="badge-teal">1 available</span>
-              </div>
-              <div class="street-row"><span>🔴 Domovinskog rata</span><span style="color:var(--muted)">Full</span></div>
-              <div class="street-row"><span>🔴 Šoltanska ul.</span><span style="color:var(--muted)">Full</span></div>
-              <div class="cta-row">
-                <button type="button" class="btn btn-teal" onclick="App.go(2)">🚗 I'm Leaving</button>
+              <p class="occ-label" id="occ-label">18 of 19 spots taken</p>
+              <div class="occ-bar" id="occ-bar"><div class="occ-red" id="occ-red"></div><div class="occ-teal" id="occ-teal"></div></div>
+              <div class="sheet-streets" id="sheet-streets"></div>
+              <div class="cta-row" id="demo-target-leaving-row">
+                <button type="button" id="demo-target-leaving" class="btn btn-teal" onclick="App.go(2)">🚗 I'm Leaving</button>
                 <button type="button" class="btn btn-outline" onclick="App.go(3)">🔍 Find a Misto</button>
+              </div>
               </div>
             </div>
           </div>
@@ -504,11 +610,11 @@
                 <p class="bt">Bluetooth connected to: Peugeot 308</p>
               </div>
             </div>
-            <button type="button" id="share-btn" class="btn btn-teal" onclick="App.shareSpot()">SHARE MY MISTO 🎯</button>
-            <div id="share-success" class="card success-card">
+            <button type="button" id="demo-target-share" class="btn btn-teal" onclick="App.shareSpot()">SHARE MY MISTO 🎯</button>
+            <div id="demo-target-share-success" class="card success-card">
               <p style="font-size:40px">✅</p>
               <h3>Spot shared!</h3>
-              <p style="color:var(--teal);font-weight:600;margin-top:6px">+10 Split-Polza points earned</p>
+              <p style="color:var(--teal);font-weight:600;margin-top:6px">You earned 10 Gušti</p>
               <p class="odometer" id="points-odo">47</p>
               <button type="button" class="btn btn-teal" onclick="App.go(1)">Back to Map</button>
             </div>
@@ -523,7 +629,7 @@
             <button type="button" class="back-btn" onclick="App.go(1)" aria-label="Back">←</button>
             <span class="screen-title">Find Parking</span>
           </header>
-          <div class="notify-banner">
+          <div class="notify-banner" id="demo-target-find-banner">
             <p>🔔 New spot just opened 180m away!</p>
             <p class="sub">Matice Hrvatske 14 · just now</p>
             <button type="button" class="btn-white" onclick="App.go(4)">Claim it →</button>
@@ -544,7 +650,7 @@
               <div class="prob-bar"><div class="prob-fill" style="width:11%;background:var(--red)"></div></div>
             </div>
             <p style="font-size:11px;color:var(--muted);margin:10px 0 14px">Based on 2,847 trips analyzed in this area</p>
-            <button type="button" class="btn btn-amber" onclick="App.go(4)">CLAIM THIS MISTO — 5 pts</button>
+            <button type="button" class="btn btn-amber" onclick="App.go(4)">CLAIM THIS MISTO — 5 Gušti</button>
             <p class="urgency"><span class="dot"></span>2 people are looking at this spot</p>
           </div>
         </section>
@@ -556,7 +662,7 @@
           </header>
           <div class="nav-map"><div id="map-4" class="leaflet-map"></div></div>
           <div class="nav-body">
-            <div class="card timer-card">
+            <div class="card timer-card" id="demo-target-nav-timer">
               <p class="lbl">🎯 Reserved! Arriving in:</p>
               <p class="timer-big" id="nav-timer">1:47</p>
               <p style="font-weight:600;font-size:14px">Matice Hrvatske 14, Split 3</p>
@@ -577,7 +683,7 @@
             <div class="stats-row">
               <div class="stat">CO₂<br><b>🟢 -0.4kg</b></div>
               <div class="stat">Time<br><b>🟢 -35min</b></div>
-              <div class="stat">Cost<br><b>🟢 -5 pts</b></div>
+              <div class="stat">Cost<br><b>🟢 -5 Gušti</b></div>
             </div>
             <button type="button" class="btn btn-teal" style="margin-top:28px;max-width:260px" onclick="App.finishNav()">Back to Map</button>
           </div>
@@ -586,57 +692,67 @@
         <!-- SCREEN 5: Wallet -->
         <section id="screen-5" class="screen">
           <header class="screen-header">
-            <span class="screen-title" style="margin-left:4px">💰 Split-Polza</span>
+            <span class="screen-title" style="margin-left:4px">Tvoji Gušti</span>
           </header>
           <div class="scroll-body">
-            <div class="wallet-hero">
+            <div class="wallet-hero" id="demo-target-wallet">
               <p class="bal" id="wallet-bal">47</p>
-              <p class="lbl">Split-Polza points</p>
+              <p class="lbl">Gušti</p>
               <div class="progress-thin"><div></div></div>
-              <p class="wallet-meta">13 pts to next reward</p>
-              <p class="wallet-meta">Earned this week: +28 pts</p>
+              <p class="wallet-meta">13 Gušti to next reward</p>
+              <p class="wallet-meta">Earned this week: +28 Gušti</p>
             </div>
             <p class="section-title">Recent Activity</p>
             <div class="card" style="padding:4px 14px;margin-bottom:18px">
               <div class="activity-row">
-                <span>✅</span><span>Spot shared</span><span style="color:var(--muted)">Today 20:15</span><span class="pts pts-teal">+10 pts</span>
+                <span>✅</span><span>Spot shared</span><span style="color:var(--muted)">Today 20:15</span><span class="pts pts-teal">+10 Gušti</span>
               </div>
               <div class="activity-row">
-                <span>🔍</span><span>Spot reserved</span><span style="color:var(--muted)">Today 20:13</span><span class="pts pts-red">-5 pts</span>
+                <span>🔍</span><span>Spot reserved</span><span style="color:var(--muted)">Today 20:13</span><span class="pts pts-red">-5 Gušti</span>
               </div>
               <div class="activity-row">
-                <span>✅</span><span>Spot shared</span><span style="color:var(--muted)">Yesterday</span><span class="pts pts-teal">+10 pts</span>
+                <span>✅</span><span>Spot shared</span><span style="color:var(--muted)">Yesterday</span><span class="pts pts-teal">+10 Gušti</span>
               </div>
               <div class="activity-row" style="border:none">
-                <span>🚶</span><span>Digitalni Redar report</span><span style="color:var(--muted)">Tue 09:22</span><span class="pts pts-teal">+8 pts</span>
+                <span>🚶</span><span>Digitalni Redar report</span><span style="color:var(--muted)">Tue 09:22</span><span class="pts pts-teal">+8 Gušti</span>
               </div>
             </div>
-            <p class="section-title">Redeem Points</p>
+            <p class="section-title">Spend your Gušti</p>
             <div class="rewards-scroll">
               <div class="card reward-card">
                 <span style="font-size:28px">☕</span>
                 <h4>Free Coffee</h4>
                 <p>Kafić Zlatna Vrata · 0.3km</p>
-                <span class="reward-badge">15 pts</span>
+                <span class="reward-badge">15 Gušti</span>
                 <button type="button" class="btn btn-outline" onclick="App.openQR('Kafić Zlatna Vrata')">Get QR Code →</button>
               </div>
               <div class="card reward-card">
                 <span style="font-size:28px">🚌</span>
                 <h4>Promet Bus Ticket</h4>
                 <p>1 ride, any line</p>
-                <span class="reward-badge">20 pts</span>
+                <span class="reward-badge">20 Gušti</span>
                 <button type="button" class="btn btn-outline">Activate →</button>
               </div>
               <div class="card reward-card">
                 <span style="font-size:28px">🍕</span>
                 <h4>Pizza Slice</h4>
                 <p>Bruna Pizzeria · 0.8km</p>
-                <span class="reward-badge">35 pts</span>
+                <span class="reward-badge">35 Gušti</span>
                 <button type="button" class="btn btn-outline" onclick="App.openQR('Bruna Pizzeria')">Get QR Code →</button>
               </div>
             </div>
           </div>
         </section>
+
+        <div id="demo-ui">
+          <div class="demo-progress"><div id="demo-progress-fill"></div></div>
+          <button type="button" id="demo-skip" onclick="App.stopDemo()">Skip demo</button>
+          <div id="demo-spotlight"></div>
+          <div id="demo-coach">
+            <h4 id="demo-coach-title">Ae! Guided Tour</h4>
+            <p id="demo-coach-text">Starting…</p>
+          </div>
+        </div>
 
       </div>
 
@@ -644,7 +760,7 @@
         <button type="button" class="nav-item" data-nav="1" onclick="App.go(1)"><span class="ico">🗺</span>Map</button>
         <button type="button" class="nav-item" data-nav="2" onclick="App.go(2)"><span class="ico">🚗</span>Leaving</button>
         <button type="button" class="nav-item" data-nav="3" onclick="App.go(3)"><span class="ico">🔍</span>Find</button>
-        <button type="button" class="nav-item" data-nav="5" onclick="App.go(5)"><span class="ico">💰</span>Wallet</button>
+        <button type="button" class="nav-item" data-nav="5" onclick="App.go(5)"><span class="ico">💰</span>Gušti</button>
       </nav>
     </div>
   </div>
@@ -691,26 +807,53 @@
       if (Math.random() > 0.5) { ctx.fillStyle = '#000'; ctx.fillRect(col * c, r * c, c, c); }
   }
 
-  const PARKING = [
-    [43.5128, 16.4821], [43.5135, 16.4831], [43.5140, 16.4818],
-    [43.5125, 16.4840], [43.5142, 16.4845], [43.5118, 16.4825], [43.5131, 16.4855]
+  const SPOTS = [
+    { lat: 43.5124, lng: 16.4816, street: 'Domovinskog rata', num: '8', available: false, detail: 'Parked ~2h' },
+    { lat: 43.5127, lng: 16.4823, street: 'Domovinskog rata', num: '15', available: false, detail: 'Parked ~40min' },
+    { lat: 43.5129, lng: 16.4832, street: 'Domovinskog rata', num: '22', available: false, detail: 'Resident permit' },
+    { lat: 43.5132, lng: 16.4841, street: 'Domovinskog rata', num: '31', available: false, detail: 'Long stay' },
+    { lat: 43.5133, lng: 16.4838, street: 'Domovinskog rata', num: '44', available: false, detail: 'Just taken' },
+    { lat: 43.5136, lng: 16.4850, street: 'Šoltanska ul.', num: '4', available: false, detail: 'Block full' },
+    { lat: 43.5141, lng: 16.4858, street: 'Šoltanska ul.', num: '11', available: false, detail: 'Parked ~1h' },
+    { lat: 43.5138, lng: 16.4863, street: 'Šoltanska ul.', num: '18', available: false, detail: 'No turnover' },
+    { lat: 43.5140, lng: 16.4818, street: 'Matice Hrvatske', num: '14', available: true, detail: 'Available · 0 claims' },
+    { lat: 43.5135, lng: 16.4815, street: 'Matice Hrvatske', num: '9', available: false, detail: 'Parked ~25min' },
+    { lat: 43.5143, lng: 16.4822, street: 'Matice Hrvatske', num: '21', available: false, detail: 'Parked ~50min' },
+    { lat: 43.5119, lng: 16.4826, street: 'Put Cetina', num: '6', available: false, detail: 'Tight fit' },
+    { lat: 43.5116, lng: 16.4834, street: 'Vukovarska', num: '12', available: false, detail: 'Parked ~3h' },
+    { lat: 43.5122, lng: 16.4846, street: 'Vukovarska', num: '28', available: false, detail: 'Occupied' },
+    { lat: 43.5146, lng: 16.4812, street: 'Kraj Slovenije', num: '3', available: false, detail: 'Overnight' },
+    { lat: 43.5148, lng: 16.4828, street: 'Kraj Slovenije', num: '7', available: false, detail: 'Parked ~20min' },
+    { lat: 43.5130, lng: 16.4810, street: 'Zrinsko-Frankopanska', num: '5', available: false, detail: 'Loading busy' },
+    { lat: 43.5126, lng: 16.4808, street: 'Zrinsko-Frankopanska', num: '2', available: false, detail: 'Parked ~1.5h' },
+    { lat: 43.5144, lng: 16.4835, street: 'Put Meštrovića', num: '3', available: false, detail: 'Visitor full' }
   ];
-  const FREE = 2;
+  const FREE_IDX = SPOTS.findIndex(s => s.available);
   const CENTER = [43.5133, 16.4827];
   const SEEKER = [43.5152, 16.4812];
   const TILE = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+  const coords = i => [SPOTS[i].lat, SPOTS[i].lng];
+  const allCoords = () => SPOTS.map(s => [s.lat, s.lng]);
+  const delay = ms => new Promise(r => setTimeout(r, ms));
 
   const App = {
     screen: 0,
     points: 47,
     maps: {},
+    mapLayers: {},
+    navOverlay: null,
+    navPaused: false,
     navTimer: null,
     navDemoTimer: null,
     seekerAnim: null,
     qrTimer: null,
     shareTimer: null,
+    demoActive: false,
+    demoAborted: false,
+    demoTimers: [],
 
     go(n) {
+      if (this.demoActive && n === 0) return;
       this.screen = n;
       document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
       document.getElementById('screen-' + n).classList.add('active');
@@ -720,105 +863,211 @@
       document.getElementById('bottom-nav').style.display = n === 0 ? 'none' : 'flex';
 
       if (n === 1) {
-        this.destroyMap('map-1');
-        this.initMap('map-1', { pins: true, popup: true });
+        this.ensureMap('map-1', { mode: 'home' });
+        this.updateHomeSheet();
       }
       if (n === 2) {
         this.resetShare();
-        this.destroyMap('map-2');
-        this.initMap('map-2', { highlight: true });
+        this.ensureMap('map-2', { mode: 'highlight' });
       }
-      if (n === 3) {
-        this.destroyMap('map-3');
-        this.initMap('map-3', { pins: true, route: true, hardGreen: true });
-      }
+      if (n === 3) this.ensureMap('map-3', { mode: 'find' });
       if (n === 4) this.startNav();
       if (n === 5) this.updatePoints();
     },
 
     updatePoints() {
-      document.getElementById('pts-top').textContent = this.points + ' pts';
+      document.getElementById('pts-top').textContent = this.points + ' Gušti';
       document.getElementById('wallet-bal').textContent = this.points;
     },
 
-    lockMap(map) {
-      map.dragging.disable();
-      map.touchZoom.disable();
-      map.doubleClickZoom.disable();
-      map.scrollWheelZoom.disable();
-      map.boxZoom.disable();
-      map.keyboard.disable();
-      if (map.tap) map.tap.disable();
-    },
-
-    pinIcon(green, hard) {
-      return L.divIcon({
-        className: 'pin-wrap',
-        html: '<div class="' + (green ? 'pin-green' + (hard ? ' hard' : '') : 'pin-red') + '"></div>',
-        iconSize: green ? [18, 18] : [14, 14],
-        iconAnchor: green ? [9, 9] : [7, 7]
-      });
-    },
-
-    addPins(map, greenIdx, interactive, hard) {
-      PARKING.forEach((coords, i) => {
-        const isFree = i === greenIdx;
-        const m = L.marker(coords, {
-          icon: this.pinIcon(isFree, hard && isFree),
-          interactive: !!interactive && isFree
-        }).addTo(map);
-        if (interactive && isFree) {
-          m.bindPopup(
-            '<strong>✅ Matice Hrvatske 14</strong><br><span style="color:#6B7280;font-size:12px">Just opened · 0 claims</span>' +
-            '<button class="popup-btn" onclick="App.go(3)">Claim this Misto →</button>'
-          );
+    addMapControls(map, id) {
+      L.control.zoom({ position: 'bottomright' }).addTo(map);
+      const self = this;
+      const Recenter = L.Control.extend({
+        options: { position: 'bottomright' },
+        onAdd() {
+          const wrap = L.DomUtil.create('div', 'leaflet-bar leaflet-control map-recenter-wrap');
+          const btn = L.DomUtil.create('a', 'map-recenter-btn', wrap);
+          btn.href = '#';
+          btn.title = 'Recenter map';
+          btn.innerHTML = '⌖';
+          L.DomEvent.disableClickPropagation(wrap);
+          L.DomEvent.on(btn, 'click', L.DomEvent.stop).on(btn, 'click', L.DomEvent.preventDefault)
+            .on(btn, 'click', () => self.recenterMap(id));
+          return wrap;
         }
       });
+      new Recenter().addTo(map);
+    },
+
+    recenterMap(id) {
+      const map = this.maps[id];
+      if (!map) return;
+      if (id === 'map-3' || id === 'map-4') {
+        map.fitBounds(L.latLngBounds([SEEKER, coords(FREE_IDX)]), { padding: [48, 48], maxZoom: 17 });
+      } else if (id === 'map-2') {
+        map.setView(coords(FREE_IDX), 17, { animate: true });
+      } else {
+        map.setView(CENTER, 16, { animate: true });
+      }
+    },
+
+    toggleSheet() {
+      const sheet = document.getElementById('map-sheet');
+      if (!sheet) return;
+      sheet.classList.toggle('collapsed');
+      const map = this.maps['map-1'];
+      if (map) setTimeout(() => map.invalidateSize(), 320);
+    },
+
+    flyToSpot(index) {
+      const map = this.maps['map-1'];
+      if (!map) return;
+      map.flyTo(coords(index), 18, { animate: true, duration: 0.8 });
+      const layer = this.markers && this.markers['map-1'] && this.markers['map-1'][index];
+      if (layer) setTimeout(() => layer.openPopup(), 600);
+    },
+
+    flyToArea(lat, lng) {
+      const map = this.maps['map-1'];
+      if (map) map.flyTo([lat, lng], 17, { animate: true, duration: 0.7 });
+    },
+
+    ensureMap(id, opts) {
+      if (this.maps[id]) {
+        setTimeout(() => this.maps[id].invalidateSize(), 120);
+        return this.maps[id];
+      }
+      return this.initMap(id, opts);
+    },
+
+    pinIcon(state, hard) {
+      const cls = (state === 'green' ? 'pin-green' : 'pin-red') + (hard ? ' hard' : '');
+      const big = state === 'green';
+      return L.divIcon({
+        className: 'pin-wrap',
+        html: '<div class="' + cls + '"></div>',
+        iconSize: big ? [18, 18] : [12, 12],
+        iconAnchor: big ? [9, 9] : [6, 6]
+      });
+    },
+
+    popupHtml(i) {
+      const s = SPOTS[i];
+      const title = s.street + ' ' + s.num;
+      if (s.available) {
+        return '<strong>✅ ' + title + '</strong><br><span style="color:#6B7280;font-size:12px">' +
+          s.detail + '</span><button class="popup-btn" onclick="App.go(3)">Claim this Misto →</button>';
+      }
+      return '<strong>🔴 Occupied</strong><br><span style="font-weight:600">' + title +
+        '</span><br><span style="color:#6B7280;font-size:12px">' + s.detail + '</span>';
+    },
+
+    addPinsToGroup(group, mapId, hard) {
+      this.markers = this.markers || {};
+      this.markers[mapId] = [];
+      SPOTS.forEach((spot, i) => {
+        const state = spot.available ? 'green' : 'red';
+        const m = L.marker([spot.lat, spot.lng], {
+          icon: this.pinIcon(state, hard && spot.available)
+        }).addTo(group);
+        m.bindPopup(this.popupHtml(i));
+        m.on('click', () => m.openPopup());
+        this.markers[mapId][i] = m;
+      });
+    },
+
+    getStats() {
+      const total = SPOTS.length;
+      const available = SPOTS.filter(s => s.available).length;
+      return { total, available, occupied: total - available };
+    },
+
+    updateHomeSheet() {
+      const st = this.getStats();
+      const occ = document.getElementById('occ-label');
+      const red = document.getElementById('occ-red');
+      const teal = document.getElementById('occ-teal');
+      if (occ) occ.textContent = st.occupied + ' of ' + st.total + ' spots taken';
+      if (red && teal) {
+        const pct = (st.occupied / st.total) * 100;
+        red.style.flex = '0 0 ' + pct + '%';
+        teal.style.flex = '1';
+      }
+      const box = document.getElementById('sheet-streets');
+      if (!box) return;
+      const byStreet = {};
+      SPOTS.forEach((s, idx) => {
+        if (!byStreet[s.street]) byStreet[s.street] = { total: 0, avail: 0, lat: s.lat, lng: s.lng, flyIdx: idx };
+        byStreet[s.street].total++;
+        if (s.available) { byStreet[s.street].avail++; byStreet[s.street].flyIdx = idx; }
+      });
+      box.innerHTML = Object.entries(byStreet).sort((a, b) => b[1].avail - a[1].avail).map(([name, d]) => {
+        const click = d.avail ? 'App.flyToSpot(' + d.flyIdx + ')' : 'App.flyToArea(' + d.lat + ',' + d.lng + ')';
+        const badge = d.avail ? '<span class="badge-teal">' + d.avail + ' available</span>' : '<span style="color:var(--muted)">Full</span>';
+        return '<div class="street-row" onclick="' + click + '"><span>' + (d.avail ? '✅' : '🔴') + ' ' + name + '</span>' + badge + '</div>';
+      }).join('');
+    },
+
+    setMapLock(id, locked) {
+      const map = this.maps[id];
+      if (!map) return;
+      const fn = locked ? 'disable' : 'enable';
+      map.dragging[fn](); map.touchZoom[fn](); map.scrollWheelZoom[fn](); map.doubleClickZoom[fn]();
     },
 
     initMap(id, opts = {}) {
-      if (this.maps[id]) {
-        setTimeout(() => this.maps[id].invalidateSize(), 100);
-        return this.maps[id];
-      }
       const map = L.map(id, {
         center: CENTER,
-        zoom: opts.zoom || 16,
+        zoom: 16,
+        minZoom: 14,
+        maxZoom: 19,
         zoomControl: false,
         attributionControl: false
       });
       L.tileLayer(TILE, { subdomains: 'abcd', maxZoom: 20 }).addTo(map);
-      this.lockMap(map);
+      this.addMapControls(map, id);
 
-      if (opts.pins) this.addPins(map, FREE, opts.popup);
-      if (opts.highlight) {
-        L.circle(PARKING[FREE], {
+      if (opts.mode === 'home') {
+        const g = L.layerGroup().addTo(map);
+        this.mapLayers[id] = g;
+        this.addPinsToGroup(g, id, false);
+        map.fitBounds(L.latLngBounds(allCoords()), { padding: [36, 36], maxZoom: 17 });
+      }
+      if (opts.mode === 'highlight') {
+        const g = L.layerGroup().addTo(map);
+        this.mapLayers[id] = g;
+        L.circle(coords(FREE_IDX), {
           radius: 40, color: '#00D4AA', fillColor: '#00D4AA',
           fillOpacity: 0.15, weight: 2
-        }).addTo(map);
-        L.marker(PARKING[FREE], { icon: this.pinIcon(true, false), interactive: false }).addTo(map);
-        map.setView(PARKING[FREE], 17);
+        }).addTo(g);
+        L.marker(coords(FREE_IDX), { icon: this.pinIcon('green', false) })
+          .bindPopup(this.popupHtml(FREE_IDX)).addTo(g);
+        map.setView(coords(FREE_IDX), 17);
       }
-      if (opts.route) {
-        this.addPins(map, FREE, false, opts.hardGreen);
+      if (opts.mode === 'find') {
+        const g = L.layerGroup().addTo(map);
+        this.mapLayers[id] = g;
+        this.addPinsToGroup(g, id, true);
         const route = [];
-        for (let i = 0; i <= 20; i++) {
-          const f = i / 20;
+        for (let i = 0; i <= 24; i++) {
+          const f = i / 24;
           route.push([
-            SEEKER[0] + (PARKING[FREE][0] - SEEKER[0]) * f,
-            SEEKER[1] + (PARKING[FREE][1] - SEEKER[1]) * f
+            SEEKER[0] + (coords(FREE_IDX)[0] - SEEKER[0]) * f,
+            SEEKER[1] + (coords(FREE_IDX)[1] - SEEKER[1]) * f
           ]);
         }
-        L.polyline(route, { color: '#3B82F6', weight: 3, dashArray: '8,10' }).addTo(map);
+        L.polyline(route, { color: '#3B82F6', weight: 3, dashArray: '8,10' }).addTo(g);
         L.marker(SEEKER, {
           icon: L.divIcon({
             className: 'seeker-wrap',
             html: '<div class="seeker-dot"></div>',
             iconSize: [14, 14], iconAnchor: [7, 7]
-          }),
-          interactive: false
-        }).addTo(map);
+          })
+        }).bindPopup('<strong>You are here</strong><br><span style="color:#6B7280;font-size:12px">180m to free Misto</span>').addTo(g);
+        map.fitBounds(L.latLngBounds(route), { padding: [40, 40], maxZoom: 17 });
       }
+      if (opts.mode === 'nav') map.setView(CENTER, 16);
 
       this.maps[id] = map;
       return map;
@@ -830,10 +1079,11 @@
     },
 
     resetShare() {
-      document.getElementById('share-btn').style.display = 'flex';
-      document.getElementById('share-btn').className = 'btn btn-teal';
-      document.getElementById('share-btn').textContent = 'SHARE MY MISTO 🎯';
-      document.getElementById('share-success').classList.remove('show');
+      const shareBtn = document.getElementById('demo-target-share');
+      shareBtn.style.display = 'flex';
+      shareBtn.className = 'btn btn-teal';
+      shareBtn.textContent = 'SHARE MY MISTO 🎯';
+      document.getElementById('demo-target-share-success').classList.remove('show');
       document.getElementById('confetti').innerHTML = '';
       if (this.shareTimer) clearTimeout(this.shareTimer);
     },
@@ -865,7 +1115,7 @@
     },
 
     shareSpot() {
-      const btn = document.getElementById('share-btn');
+      const btn = document.getElementById('demo-target-share');
       btn.className = 'btn btn-success';
       btn.textContent = '✓ Shared!';
       this.confetti();
@@ -875,56 +1125,313 @@
       this.updatePoints();
       setTimeout(() => {
         btn.style.display = 'none';
-        document.getElementById('share-success').classList.add('show');
+        document.getElementById('demo-target-share-success').classList.add('show');
         this.animateOdometer(from, this.points);
         playDing();
-        this.shareTimer = setTimeout(() => App.go(1), 2000);
+        if (!this.demoActive) this.shareTimer = setTimeout(() => App.go(1), 2000);
       }, 400);
     },
 
-    destroyMap(id) {
-      if (this.maps[id]) {
-        this.maps[id].remove();
-        delete this.maps[id];
+    demoShareSpot() {
+      const btn = document.getElementById('demo-target-share');
+      btn.className = 'btn btn-success';
+      btn.textContent = '✓ Shared!';
+      this.confetti();
+      playDing();
+      const from = this.points;
+      this.points += 10;
+      this.updatePoints();
+      setTimeout(() => {
+        btn.style.display = 'none';
+        document.getElementById('demo-target-share-success').classList.add('show');
+        this.animateOdometer(from, this.points);
+        playDing();
+      }, 400);
+    },
+
+    demoRoot() {
+      return document.querySelector('.screen-area');
+    },
+
+    async waitForLayout() {
+      await delay(50);
+      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+    },
+
+    activeEl(selector) {
+      const screen = document.querySelector('.screen.active');
+      return screen ? screen.querySelector(selector) : null;
+    },
+
+    async highlightEl(el, pad) {
+      pad = pad == null ? 10 : pad;
+      if (!el) return;
+      const root = this.demoRoot();
+      const screen = document.querySelector('.screen.active');
+      if (!root || !screen || !screen.contains(el)) return;
+
+      const scroller = el.closest('.scroll-body') || el.closest('.bottom-sheet');
+      if (scroller && scroller.scrollHeight > scroller.clientHeight) {
+        const er0 = el.getBoundingClientRect();
+        const sr = scroller.getBoundingClientRect();
+        if (er0.top < sr.top || er0.bottom > sr.bottom) {
+          el.scrollIntoView({ block: 'center', behavior: 'instant' });
+          await this.waitForLayout();
+        }
       }
+
+      const rr = root.getBoundingClientRect();
+      const er = el.getBoundingClientRect();
+      if (er.width < 4 || er.height < 4) return;
+
+      const sp = document.getElementById('demo-spotlight');
+      sp.style.left = Math.round(er.left - rr.left - pad) + 'px';
+      sp.style.top = Math.round(er.top - rr.top - pad) + 'px';
+      sp.style.width = Math.round(er.width + pad * 2) + 'px';
+      sp.style.height = Math.round(er.height + pad * 2) + 'px';
+      sp.classList.add('show');
+    },
+
+    highlightMapPoint(mapId, latlng, size) {
+      const map = this.maps[mapId];
+      const root = this.demoRoot();
+      if (!map || !root) return;
+      size = size || 56;
+      const pt = map.latLngToContainerPoint(latlng);
+      const mr = map.getContainer().getBoundingClientRect();
+      const rr = root.getBoundingClientRect();
+      const sp = document.getElementById('demo-spotlight');
+      const x = mr.left - rr.left + pt.x;
+      const y = mr.top - rr.top + pt.y;
+      sp.style.left = Math.round(x - size / 2) + 'px';
+      sp.style.top = Math.round(y - size / 2) + 'px';
+      sp.style.width = size + 'px';
+      sp.style.height = size + 'px';
+      sp.classList.add('show');
+    },
+
+    clearHighlight() {
+      document.getElementById('demo-spotlight').classList.remove('show');
+      document.querySelectorAll('.pin-demo-pulse').forEach(el => el.classList.remove('pin-demo-pulse'));
+    },
+
+    coach(title, text) {
+      document.getElementById('demo-coach-title').textContent = title;
+      document.getElementById('demo-coach-text').textContent = text;
+      document.getElementById('demo-coach').classList.add('show');
+    },
+
+    async startDemo() {
+      if (this.demoActive) return;
+      this.demoActive = true;
+      this.demoAborted = false;
+      ['map-1', 'map-2', 'map-3', 'map-4'].forEach(id => {
+        if (this.maps[id]) { this.maps[id].remove(); delete this.maps[id]; delete this.mapLayers[id]; }
+      });
+      this.markers = {};
+      document.querySelector('.phone').classList.add('demo-active');
+      document.getElementById('demo-ui').classList.add('active');
+      document.getElementById('demo-start-btn').disabled = true;
+      document.getElementById('map-sheet').classList.add('collapsed');
+
+      this.go(1);
+      await delay(500);
+      let map = this.maps['map-1'];
+      if (!map) { this.ensureMap('map-1', { mode: 'home' }); map = this.maps['map-1']; }
+      this.setMapLock('map-1', true);
+
+      const total = 58000;
+      const t0 = Date.now();
+      const prog = setInterval(() => {
+        if (this.demoAborted) return;
+        const p = Math.min(100, ((Date.now() - t0) / total) * 100);
+        document.getElementById('demo-progress-fill').style.width = p + '%';
+      }, 120);
+      this.demoTimers.push(prog);
+
+      try {
+        this.coach('🗺 Split 3 live', '19 Misto on the map — watch occupancy update in real time.');
+        map.flyToBounds(L.latLngBounds(allCoords()), { padding: [44, 44], duration: 4, maxZoom: 16 });
+        await delay(5200);
+        if (this.demoAborted) return;
+
+        this.coach('🔴 Pressure zone', 'Zooming into a packed block — typical Sunday evening.');
+        map.flyTo([43.5132, 16.4842], 17, { duration: 2.5 });
+        await delay(4800);
+        if (this.demoAborted) return;
+
+        this.coach('✅ Misto available', 'Matice Hrvatske 14 just opened — 0 claims so far.');
+        map.flyTo(coords(FREE_IDX), 18, { duration: 2 });
+        await delay(1600);
+        await this.waitForLayout();
+        if (this.markers['map-1'] && this.markers['map-1'][FREE_IDX]) {
+          this.markers['map-1'][FREE_IDX].openPopup();
+        }
+        this.highlightMapPoint('map-1', coords(FREE_IDX), 64);
+        await delay(4200);
+        if (this.demoAborted) return;
+        this.clearHighlight();
+        map.closePopup();
+
+        this.coach('🚗 Share your spot', 'Leaving? One tap — or auto-release via Bluetooth.');
+        document.getElementById('map-sheet').classList.remove('collapsed');
+        map.invalidateSize();
+        await delay(450);
+        await this.waitForLayout();
+        await this.highlightEl(document.getElementById('demo-target-leaving'));
+        await delay(3800);
+        if (this.demoAborted) return;
+        this.clearHighlight();
+
+        this.go(2);
+        await delay(600);
+        await this.waitForLayout();
+        await this.highlightEl(document.getElementById('demo-target-share'));
+        await delay(2200);
+        this.demoShareSpot();
+        await delay(600);
+        await this.highlightEl(document.getElementById('demo-target-share-success'));
+        await delay(3600);
+        if (this.demoAborted) return;
+        this.clearHighlight();
+        this.resetShare();
+
+        this.coach('🔍 Find a Misto', 'AI ranks streets — claim before someone else does.');
+        this.go(3);
+        await delay(600);
+        await this.waitForLayout();
+        map = this.maps['map-3'];
+        if (map) map.flyToBounds(L.latLngBounds([SEEKER, coords(FREE_IDX)]), { padding: [50, 50], duration: 2.5, maxZoom: 17 });
+        await delay(400);
+        await this.highlightEl(document.getElementById('demo-target-find-banner'));
+        await delay(4500);
+        if (this.demoAborted) return;
+        this.clearHighlight();
+
+        this.coach('🎯 Navigation', 'Reserved — follow the route to your Misto.');
+        this.go(4);
+        await delay(600);
+        await this.waitForLayout();
+        map = this.maps['map-4'];
+        if (map) map.flyTo(coords(FREE_IDX), 17, { duration: 2 });
+        await delay(500);
+        await this.highlightEl(document.getElementById('demo-target-nav-timer'));
+        if (this.navDemoTimer) clearTimeout(this.navDemoTimer);
+        this.navDemoTimer = setTimeout(() => this.showParkSuccess(), 4500);
+        await delay(5000);
+        if (this.demoAborted) return;
+        this.clearHighlight();
+
+        this.coach('💰 Tvoji Gušti', 'Earn Gušti helping neighbors — spend at Kafić Zlatna Vrata and more.');
+        document.getElementById('park-success').classList.remove('show');
+        this.clearNavOverlay();
+        this.go(5);
+        await delay(600);
+        await this.waitForLayout();
+        const walletScroll = document.querySelector('#screen-5 .scroll-body');
+        if (walletScroll) walletScroll.scrollTop = 0;
+        await this.highlightEl(document.getElementById('demo-target-wallet'));
+        await delay(3800);
+        if (this.demoAborted) return;
+        this.clearHighlight();
+
+        this.openQR('Kafić Zlatna Vrata');
+        await delay(2800);
+        this.closeQR();
+        await delay(400);
+
+        this.coach('Ae!', 'Split dišpet. Zero concrete. Explore the map freely!');
+        this.go(1);
+        await delay(800);
+        map = this.maps['map-1'];
+        if (map) map.flyToBounds(L.latLngBounds(allCoords()), { padding: [40, 40], duration: 3, maxZoom: 16 });
+        await delay(3200);
+      } catch (e) { /* demo interrupted */ }
+      this.stopDemo();
+    },
+
+    stopDemo() {
+      this.demoAborted = true;
+      this.demoActive = false;
+      this.demoTimers.forEach(t => clearInterval(t));
+      this.demoTimers = [];
+      if (this.navTimer) clearInterval(this.navTimer);
+      if (this.navDemoTimer) clearTimeout(this.navDemoTimer);
+      if (this.shareTimer) clearTimeout(this.shareTimer);
+      document.querySelector('.phone').classList.remove('demo-active');
+      document.getElementById('demo-ui').classList.remove('active');
+      document.getElementById('demo-start-btn').disabled = false;
+      document.getElementById('demo-progress-fill').style.width = '0%';
+      this.clearHighlight();
+      document.getElementById('park-success').classList.remove('show');
+      ['map-1', 'map-2', 'map-3', 'map-4'].forEach(id => this.setMapLock(id, false));
+      this.resetShare();
+      this.go(1);
+    },
+
+    clearNavOverlay() {
+      if (this.navOverlay && this.maps['map-4']) {
+        this.maps['map-4'].removeLayer(this.navOverlay);
+        this.navOverlay = null;
+      }
+      if (this.seekerAnim) cancelAnimationFrame(this.seekerAnim);
+      this.navPaused = false;
     },
 
     startNav() {
       document.getElementById('park-success').classList.remove('show');
-      this.destroyMap('map-4');
-      const map = this.initMap('map-4', {});
-      PARKING.forEach((coords, i) => {
-        L.marker(coords, { icon: this.pinIcon(i === FREE, i === FREE), interactive: false }).addTo(map);
-      });
-      if (FREE >= 0) {
-        L.circle(PARKING[FREE], {
-          radius: 35, color: '#00D4AA', fillColor: '#00D4AA',
-          fillOpacity: 0.2, weight: 2
-        }).addTo(map);
+      this.clearNavOverlay();
+      const map = this.ensureMap('map-4', { mode: 'nav' });
+      if (!this.mapLayers['map-4']) {
+        this.mapLayers['map-4'] = L.layerGroup().addTo(map);
       }
+      this.clearNavOverlay();
+      const overlay = L.layerGroup().addTo(map);
+      this.navOverlay = overlay;
+
+      SPOTS.forEach((spot, i) => {
+        const st = spot.available ? 'green' : 'red';
+        const m = L.marker([spot.lat, spot.lng], { icon: this.pinIcon(st, spot.available) }).addTo(overlay);
+        m.bindPopup(this.popupHtml(i));
+        m.on('click', () => m.openPopup());
+      });
+      L.circle(coords(FREE_IDX), {
+        radius: 35, color: '#00D4AA', fillColor: '#00D4AA',
+        fillOpacity: 0.2, weight: 2
+      }).addTo(overlay);
+
       const route = [];
       for (let i = 0; i <= 30; i++) {
         const f = i / 30;
         route.push([
-          SEEKER[0] + (PARKING[FREE][0] - SEEKER[0]) * f,
-          SEEKER[1] + (PARKING[FREE][1] - SEEKER[1]) * f
+          SEEKER[0] + (coords(FREE_IDX)[0] - SEEKER[0]) * f,
+          SEEKER[1] + (coords(FREE_IDX)[1] - SEEKER[1]) * f
         ]);
       }
-      L.polyline(route, { color: '#3B82F6', weight: 3, dashArray: '8,10' }).addTo(map);
+      L.polyline(route, { color: '#3B82F6', weight: 3, dashArray: '8,10' }).addTo(overlay);
       const seeker = L.marker(SEEKER, {
         icon: L.divIcon({
           className: 'seeker-wrap',
           html: '<div class="seeker-dot"></div>',
           iconSize: [14, 14], iconAnchor: [7, 7]
         })
-      }).addTo(map);
+      }).addTo(overlay);
+
+      map.fitBounds(L.latLngBounds(route), { padding: [50, 50], maxZoom: 17 });
+      if (!map._aeNavHook) {
+        map.on('dragstart', () => { this.navPaused = true; });
+        map._aeNavHook = true;
+      }
 
       let t = 0;
-      if (this.seekerAnim) cancelAnimationFrame(this.seekerAnim);
       const move = () => {
-        t = Math.min(1, t + 0.002);
-        seeker.setLatLng(route[Math.floor(t * (route.length - 1))]);
-        if (t < 1) this.seekerAnim = requestAnimationFrame(move);
+        if (!this.navPaused) {
+          t = Math.min(1, t + (this.demoActive ? 0.014 : 0.002));
+          seeker.setLatLng(route[Math.floor(t * (route.length - 1))]);
+        }
+        if (t < 1 && !document.getElementById('park-success').classList.contains('show')) {
+          this.seekerAnim = requestAnimationFrame(move);
+        }
       };
       this.seekerAnim = requestAnimationFrame(move);
 
@@ -958,7 +1465,7 @@
     finishNav() {
       if (this.navTimer) clearInterval(this.navTimer);
       if (this.navDemoTimer) clearTimeout(this.navDemoTimer);
-      if (this.seekerAnim) cancelAnimationFrame(this.seekerAnim);
+      this.clearNavOverlay();
       this.go(1);
     },
 
@@ -986,6 +1493,11 @@
   document.getElementById('screen-0').addEventListener('click', () => App.go(1));
   setTimeout(() => { if (App.screen === 0) App.go(1); }, 2500);
   document.getElementById('bottom-nav').style.display = 'none';
+  document.getElementById('map-sheet').classList.add('collapsed');
+  setTimeout(() => App.updateHomeSheet(), 3200);
   </script>
 </body>
 </html>
+
+
+
