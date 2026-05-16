@@ -1,0 +1,700 @@
+/* Slobodno Mjesto — jezik (html[lang]) + responzivnost */
+
+:root {
+  --bg: #0a0f0e;
+  --surface: rgba(15, 20, 19, 0.92);
+  --teal: #00d4aa;
+  --teal-dim: rgba(0, 212, 170, 0.15);
+  --alert: #ff4444;
+  --blue: #3b82f6;
+  --text: #f4f4f5;
+  --muted: rgba(255, 255, 255, 0.55);
+  --border: rgba(255, 255, 255, 0.1);
+  --radius: 12px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --font: 'Inter', system-ui, sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  height: 100%;
+  height: 100dvh;
+}
+
+html[lang='hr'] .t-en,
+html[lang='en'] .t-hr {
+  display: none !important;
+}
+
+body {
+  margin: 0;
+  min-height: 100%;
+  min-height: 100dvh;
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+.pin-wrap {
+  background: transparent !important;
+  border: none !important;
+}
+
+a {
+  color: var(--teal);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* Layout — puni ekran; uski stupac samo na mobitelu */
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  min-height: 100dvh;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+.app-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-sidebar {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  padding-top: max(12px, env(safe-area-inset-top));
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(12px);
+  z-index: 100;
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.app-header .tagline {
+  margin: 2px 0 0;
+  font-size: 0.7rem;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.points-pill {
+  flex-shrink: 0;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: var(--teal-dim);
+  border: 1px solid rgba(0, 212, 170, 0.35);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--teal);
+  white-space: nowrap;
+}
+
+.points-pill.pop {
+  animation: points-pop 0.45s ease;
+}
+
+@keyframes points-pop {
+  40% {
+    transform: scale(1.08);
+  }
+}
+
+#map {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  z-index: 1;
+}
+
+.leaflet-container {
+  background: var(--bg);
+  font-family: var(--font);
+}
+
+/* Mode tabs */
+.mode-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 12px 16px 0;
+}
+
+.mode-tab {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.mode-tab.active {
+  background: var(--teal-dim);
+  border-color: rgba(0, 212, 170, 0.45);
+  color: var(--teal);
+}
+
+/* Panel */
+.panel {
+  padding: 12px 16px calc(16px + var(--safe-bottom));
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+
+.panel[hidden] {
+  display: none !important;
+}
+
+.panel h2 {
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.panel p.hint {
+  margin: 0 0 12px;
+  font-size: 0.8rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.btn {
+  display: block;
+  width: 100%;
+  padding: 14px 16px;
+  border: none;
+  border-radius: var(--radius);
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: transform 0.12s ease, opacity 0.2s, box-shadow 0.2s;
+}
+
+.btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--teal);
+  color: #0a0f0e;
+  box-shadow: 0 0 20px rgba(0, 212, 170, 0.3);
+}
+
+.btn-primary:hover:not(:disabled) {
+  box-shadow: 0 0 28px rgba(0, 212, 170, 0.5);
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+  border: 1px solid var(--border);
+  margin-top: 8px;
+}
+
+.btn-danger {
+  background: rgba(255, 68, 68, 0.15);
+  color: var(--alert);
+  border: 1px solid rgba(255, 68, 68, 0.35);
+  margin-top: 8px;
+}
+
+/* Spot list */
+.spot-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 140px;
+  overflow-y: auto;
+}
+
+.spot-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  font-size: 0.82rem;
+}
+
+.spot-item .meta {
+  color: var(--muted);
+  font-size: 0.72rem;
+  margin-top: 2px;
+}
+
+.spot-item button {
+  flex-shrink: 0;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 8px;
+  background: var(--blue);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.spot-item button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.spot-item.claimed {
+  border-color: rgba(0, 212, 170, 0.4);
+}
+
+/* Wallet */
+.rewards {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.reward-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  font-size: 0.82rem;
+}
+
+.reward-card button {
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 212, 170, 0.35);
+  background: var(--teal-dim);
+  color: var(--teal);
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.reward-card button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Toast */
+.toast {
+  position: fixed;
+  top: max(72px, calc(env(safe-area-inset-top) + 56px));
+  left: 50%;
+  transform: translateX(-50%) translateY(-120%);
+  width: min(94vw, 400px);
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(14px);
+  font-size: 0.85rem;
+  font-weight: 600;
+  z-index: 2000;
+  opacity: 0;
+  transition: transform 0.4s ease, opacity 0.35s ease;
+  pointer-events: none;
+}
+
+.toast.show {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+
+.toast.success {
+  border-color: rgba(0, 212, 170, 0.4);
+  color: var(--teal);
+}
+
+.toast.error {
+  border-color: rgba(255, 68, 68, 0.4);
+  color: var(--alert);
+}
+
+/* Nav link bar */
+.nav-bar {
+  display: flex;
+  gap: 8px;
+  padding: 8px 16px;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.nav-bar .link-btn {
+  flex: 1;
+  text-align: center;
+  padding: 10px;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.nav-bar .link-btn:hover {
+  border-color: rgba(0, 212, 170, 0.35);
+  text-decoration: none;
+}
+
+/* Map pins */
+.pin-leaving {
+  width: 20px;
+  height: 20px;
+  background: var(--teal);
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 14px rgba(0, 212, 170, 0.8);
+  animation: pulse-teal 1.4s ease-in-out infinite;
+}
+
+.pin-open {
+  width: 18px;
+  height: 18px;
+  background: var(--blue);
+  border: 2px solid #fff;
+  border-radius: 50%;
+}
+
+@keyframes pulse-teal {
+  50% {
+    transform: scale(1.15);
+  }
+}
+
+/* Countdown */
+.countdown {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: var(--teal);
+  text-align: center;
+  margin: 8px 0;
+}
+
+/* Index menu extras */
+.menu-btn-app {
+  background: rgba(59, 130, 246, 0.12);
+  color: #93c5fd;
+  border-color: rgba(59, 130, 246, 0.35);
+}
+
+.menu-btn-app:hover {
+  background: rgba(59, 130, 246, 0.22);
+  border-color: rgba(59, 130, 246, 0.5);
+}
+
+/* Desktop / tablet — karta lijevo, kontrole desno, cijeli viewport */
+@media (min-width: 769px) {
+  .app-header {
+    padding: 14px 24px;
+  }
+
+  .app-header h1 {
+    font-size: 1.35rem;
+  }
+
+  .app-header .tagline {
+    font-size: 0.8rem;
+  }
+
+  .nav-bar {
+    padding: 8px 24px;
+  }
+
+  .nav-bar .link-btn {
+    flex: 0 1 auto;
+    max-width: 220px;
+  }
+
+  .app-body {
+    flex-direction: row;
+  }
+
+  .app-sidebar {
+    width: clamp(300px, 30vw, 420px);
+    max-height: none;
+    overflow-y: auto;
+    border-left: 1px solid var(--border);
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .mode-tabs {
+    padding: 16px 20px 0;
+  }
+
+  .panel {
+    padding: 14px 20px calc(18px + var(--safe-bottom));
+    border-top: 1px solid var(--border);
+  }
+
+  #panel-wallet {
+    margin-top: auto;
+  }
+
+  .spot-list {
+    max-height: 220px;
+  }
+
+  .rewards {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Mobitel — puni ekran, kontrole ispod karte (bez uskog „phone frame”) */
+@media (max-width: 768px) {
+  .app-sidebar {
+    max-height: min(48vh, 420px);
+    overflow-y: auto;
+    border-top: 1px solid var(--border);
+  }
+
+  .mode-tabs {
+    padding: 10px 12px 0;
+  }
+
+  .panel {
+    padding: 10px 14px calc(12px + var(--safe-bottom));
+  }
+}
+
+/* Auth pages */
+.auth-page {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.auth-card {
+  width: min(100%, 400px);
+  padding: 28px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.auth-card h1 {
+  margin: 0 0 6px;
+  font-size: 1.5rem;
+}
+
+.auth-sub {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin: 0 0 20px;
+}
+
+.auth-back {
+  display: inline-block;
+  margin-bottom: 16px;
+  font-size: 0.85rem;
+}
+
+.auth-card label {
+  display: block;
+  margin-bottom: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.auth-card input {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--text);
+  font-family: inherit;
+}
+
+.auth-error {
+  color: var(--alert);
+  font-size: 0.82rem;
+  margin: 0 0 12px;
+}
+
+.auth-footer {
+  margin-top: 16px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.auth-hint {
+  margin-top: 12px;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.auth-bar {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.link-sm,
+.btn-link {
+  color: var(--teal);
+  font-weight: 600;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.75rem;
+  padding: 0 4px;
+}
+
+.map-hint {
+  margin: 0;
+  padding: 8px 16px;
+  text-align: center;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--teal);
+  background: rgba(0, 212, 170, 0.1);
+  border-bottom: 1px solid rgba(0, 212, 170, 0.2);
+}
+
+.mark-action-select {
+  position: absolute;
+  left: -9999px;
+}
+
+#map.map-mark-mode {
+  cursor: crosshair;
+}
+
+.map-mark-btn.active {
+  border-color: var(--teal);
+  color: var(--teal);
+}
+
+.pin-temp {
+  width: 24px;
+  height: 24px;
+  border: 3px dashed var(--teal);
+  border-radius: 50%;
+  background: rgba(0, 212, 170, 0.25);
+  animation: pulse-teal 1s ease-in-out infinite;
+}
+
+.reward-need {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--alert);
+  margin-top: 2px;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+  margin-top: 12px;
+}
+
+.admin-table th,
+.admin-table td {
+  padding: 8px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+
+.admin-table input {
+  width: 64px;
+  padding: 4px;
+}
+
+.btn-save {
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--teal-dim);
+  color: var(--teal);
+  cursor: pointer;
+  font-size: 0.72rem;
+}
+
+@media (max-width: 380px) {
+  .app-header h1 {
+    font-size: 1rem;
+  }
+
+  .points-pill {
+    font-size: 0.72rem;
+    padding: 6px 10px;
+  }
+
+  .mode-tab {
+    font-size: 0.78rem;
+    padding: 10px 8px;
+  }
+}
+
+@media (max-height: 600px) {
+  #map {
+    min-height: 160px;
+  }
+
+  .spot-list {
+    max-height: 100px;
+  }
+}

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Registracija — Slobodno Misto</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/slobodno.css" />
+  <script src="js/lang.js"></script>
+</head>
+<body class="auth-page">
+  <main class="auth-card">
+    <a href="main.html" class="auth-back">← Slobodno Misto</a>
+    <h1><span class="t-hr">Registracija</span><span class="t-en">Sign up</span></h1>
+    <p class="auth-sub"><span class="t-hr">Počinješ s 8 Polza — zaradi više prijavom slobodnih mjesta</span><span class="t-en">Start with 8 Polza — earn more by reporting spots</span></p>
+    <form id="register-form">
+      <label><span class="t-hr">Ime</span><span class="t-en">Name</span><input type="text" name="name" autocomplete="name" /></label>
+      <label><span class="t-hr">Email</span><span class="t-en">Email</span><input type="email" name="email" required autocomplete="email" /></label>
+      <label><span class="t-hr">Lozinka (min. 6)</span><span class="t-en">Password (min. 6)</span><input type="password" name="password" required minlength="6" autocomplete="new-password" /></label>
+      <p class="auth-error" id="auth-error" hidden></p>
+      <button type="submit" class="btn btn-primary"><span class="t-hr">Kreiraj račun</span><span class="t-en">Create account</span></button>
+    </form>
+    <p class="auth-footer">
+      <span class="t-hr">Već imaš račun? </span><span class="t-en">Already have an account? </span>
+      <a href="login.html"><span class="t-hr">Prijava</span><span class="t-en">Log in</span></a>
+    </p>
+  </main>
+  <script src="js/api.js"></script>
+  <script>
+    document.getElementById('register-form').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      var err = document.getElementById('auth-error');
+      err.hidden = true;
+      var fd = new FormData(e.target);
+      try {
+        await SlobodnoApi.register(fd.get('email'), fd.get('password'), fd.get('name'));
+        location.href = 'main.html';
+      } catch (ex) {
+        err.textContent = ex.message;
+        err.hidden = false;
+      }
+    });
+  </script>
+</body>
+</html>
