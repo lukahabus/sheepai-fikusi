@@ -1,743 +1,767 @@
 <!DOCTYPE html>
-<html lang="hr">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Ae! — Demo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Ae! — Split Parking</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
-          colors: {
-            ae: { bg: '#0f0f0f', teal: '#00D4AA', alert: '#FF4444', blue: '#3B82F6' }
-          }
-        }
-      }
-    };
-  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
   <style>
-    * { box-sizing: border-box; }
-    html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; font-family: 'Inter', system-ui, sans-serif; background: #0f0f0f; }
-    #map { width: 100%; height: 100%; opacity: 0; transition: opacity 1.2s ease; }
-    #map.visible { opacity: 1; }
-    #map.dimmed { opacity: 0.35; transition: opacity 0.8s ease; }
-    .leaflet-container { background: #0f0f0f; font-family: 'Inter', sans-serif; }
-    .pin-wrap, .car-wrap, .street-wrap, .seeker-wrap {
-      background: transparent !important;
-      border: none !important;
+    /* ── Shared design tokens (same as demo.html) ── */
+    :root {
+      --bg: #0a0a0f;
+      --teal: #00D4AA;
+      --danger: #FF4444;
+      --blue: #3B82F6;
+      --amber: #F59E0B;
+      --glass: rgba(15, 15, 22, 0.88);
+      --border: rgba(255, 255, 255, 0.08);
+      --text-muted: rgba(255, 255, 255, 0.55);
     }
 
-    .pin-red {
-      width: 18px; height: 18px;
-      background: #FF4444;
-      border: 2px solid rgba(255,255,255,0.9);
-      border-radius: 50%;
-      box-shadow: 0 0 12px rgba(255,68,68,0.7);
-      animation: pulse-red 1.4s ease-in-out infinite;
-    }
-    @keyframes pulse-red {
-      0%, 100% { transform: scale(1); box-shadow: 0 0 8px rgba(255,68,68,0.6); }
-      50% { transform: scale(1.25); box-shadow: 0 0 20px rgba(255,68,68,0.95); }
-    }
-    .pin-green {
-      width: 22px; height: 22px;
-      background: #00D4AA;
-      border: 2px solid #fff;
-      border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 12px;
-      box-shadow: 0 0 16px rgba(0,212,170,0.8);
-    }
-    .ripple-wrap { position: relative; width: 22px; height: 22px; }
-    .ripple {
-      position: absolute; left: 50%; top: 50%;
-      width: 22px; height: 22px; margin: -11px 0 0 -11px;
-      border: 2px solid #00D4AA; border-radius: 50%;
-      opacity: 0; pointer-events: none;
-    }
-    .ripple.wave1 { animation: shockwave 1.2s ease-out 0s; }
-    .ripple.wave2 { animation: shockwave 1.2s ease-out 0.35s; }
-    .ripple.wave3 { animation: shockwave 1.2s ease-out 0.7s; }
-    @keyframes shockwave {
-      0% { transform: scale(1); opacity: 0.85; }
-      100% { transform: scale(5); opacity: 0; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      height: 100%;
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: #fff;
     }
 
-    .car-icon {
-      font-size: 22px;
-      filter: drop-shadow(0 2px 6px rgba(0,0,0,0.6));
-      line-height: 1;
-      transition: transform 0.15s linear;
+    .page-wrap {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 12px;
+      background: radial-gradient(ellipse at 50% 0%, #14141f 0%, var(--bg) 60%);
     }
-    .seeker-dot {
-      width: 14px; height: 14px;
-      background: #3B82F6;
-      border: 3px solid #fff;
-      border-radius: 50%;
-      box-shadow: 0 0 14px rgba(59,130,246,0.9);
+    .phone {
+      width: 100%;
+      max-width: 390px;
+      height: min(844px, calc(100vh - 24px));
+      background: var(--bg);
+      border-radius: 28px;
+      border: 1px solid var(--border);
+      box-shadow: 0 28px 90px rgba(0, 0, 0, 0.55);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
     }
+    @media (max-width: 420px) {
+      .page-wrap { padding: 0; }
+      .phone { max-width: none; height: 100vh; border-radius: 0; border: none; }
+    }
+
+    .demo-badge {
+      position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+      z-index: 900; font-size: 9px; font-weight: 700;
+      letter-spacing: 0.14em; text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.22);
+    }
+
+    .screen-area { flex: 1; position: relative; overflow: hidden; }
+    .screen {
+      position: absolute; inset: 0;
+      display: none; flex-direction: column;
+      background: var(--bg); overflow: hidden;
+    }
+    .screen.active { display: flex; }
 
     .glass {
-      background: rgba(15,15,15,0.82);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 1rem;
+      background: var(--glass);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid var(--border);
+      border-radius: 16px;
     }
 
-    .overlay-card {
-      transform: translateY(120%);
-      opacity: 0;
-      transition: transform 0.7s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.5s ease;
+    /* ── Screen 0: Splash ── */
+    .splash {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 28px;
+      text-align: center;
     }
-    .overlay-card.show { transform: translateY(0); opacity: 1; }
-    .overlay-card.hide { transform: translateY(40px); opacity: 0; }
+    .splash-logo {
+      font-size: 72px;
+      font-weight: 900;
+      color: var(--teal);
+      line-height: 1;
+      letter-spacing: -2px;
+    }
+    .splash-tag { color: var(--teal); font-weight: 700; font-size: 17px; margin-top: 12px; }
+    .splash-sub { color: var(--text-muted); font-size: 14px; margin-top: 10px; line-height: 1.5; }
 
-    .toast-top {
-      transform: translateY(-120%);
-      opacity: 0;
-      transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.4s ease;
+    /* ── Screen 1: Map ── */
+    .map-box { flex: 1; position: relative; min-height: 0; }
+    .leaflet-map { width: 100%; height: 100%; }
+    .leaflet-container { background: var(--bg); font-family: inherit; }
+    .pin-wrap, .seeker-wrap { background: transparent !important; border: none !important; }
+    .pin-red {
+      width: 14px; height: 14px;
+      background: var(--danger);
+      border: 2px solid #fff;
+      border-radius: 50%;
+      box-shadow: 0 0 10px rgba(255, 68, 68, 0.75);
+      animation: pulse-red 1.4s ease-in-out infinite;
     }
-    .toast-top.show { transform: translateY(0); opacity: 1; }
+    .pin-green {
+      width: 16px; height: 16px;
+      background: var(--teal);
+      border: 2px solid #fff;
+      border-radius: 50%;
+      box-shadow: 0 0 14px rgba(0, 212, 170, 0.85);
+      animation: pulse-green 1.2s ease-in-out infinite;
+    }
+    @keyframes pulse-red { 50% { transform: scale(1.22); } }
+    @keyframes pulse-green { 50% { transform: scale(1.14); } }
 
-    .phone-frame {
-      transform: translateX(110%);
-      opacity: 0;
-      transition: transform 0.65s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.5s ease;
+    .top-bar {
+      position: absolute; top: 0; left: 0; right: 0; z-index: 500;
+      padding: 14px 16px;
+      display: flex; align-items: center; justify-content: space-between;
+      background: linear-gradient(180deg, rgba(10,10,15,0.95) 0%, transparent 100%);
     }
-    .phone-frame.show { transform: translateX(0); opacity: 1; }
-    .phone-frame.hide { transform: translateX(110%); opacity: 0; }
+    .logo-sm { font-weight: 800; font-size: 18px; color: var(--teal); }
+    .top-right { display: flex; align-items: center; gap: 10px; }
+    .polza-pill {
+      font-size: 12px; font-weight: 700;
+      color: var(--teal);
+      background: rgba(0, 212, 170, 0.12);
+      border: 1px solid rgba(0, 212, 170, 0.35);
+      padding: 5px 11px;
+      border-radius: 20px;
+    }
+    .avatar {
+      width: 34px; height: 34px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--blue), var(--teal));
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 13px;
+    }
+    .ai-live {
+      position: absolute; top: 56px; right: 14px; z-index: 500;
+      font-size: 10px; font-weight: 700;
+      padding: 6px 11px; border-radius: 20px;
+      background: rgba(10, 10, 15, 0.85);
+      border: 1px solid rgba(0, 212, 170, 0.35);
+      display: flex; align-items: center; gap: 6px;
+    }
+    .ai-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--teal);
+      animation: pulse-green 1s infinite;
+    }
+    .bottom-sheet {
+      position: absolute; bottom: 0; left: 0; right: 0; z-index: 500;
+      height: 42%;
+      background: rgba(10, 10, 15, 0.96);
+      backdrop-filter: blur(22px);
+      border-top: 1px solid var(--border);
+      border-radius: 22px 22px 0 0;
+      padding: 18px 16px;
+      overflow-y: auto;
+    }
+    .sheet-title { font-weight: 700; font-size: 15px; }
+    .sheet-sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+    .occ-bar {
+      height: 7px; border-radius: 4px;
+      background: rgba(255, 255, 255, 0.08);
+      margin: 12px 0 14px;
+      overflow: hidden;
+    }
+    .occ-fill {
+      height: 100%; width: 86%;
+      background: linear-gradient(90deg, var(--danger), #ff6b6b);
+      border-radius: 4px;
+    }
+    .street-row {
+      display: flex; justify-content: space-between;
+      font-size: 12px; padding: 7px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .cta-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
 
-    .street-label {
-      padding: 6px 10px;
-      font-size: 11px;
-      font-weight: 600;
-      white-space: nowrap;
-      color: #fff;
-      background: rgba(15,15,15,0.88);
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 8px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-      opacity: 0;
-      transform: translateY(8px);
-      transition: opacity 0.5s ease, transform 0.5s ease;
+    /* ── Screens 2–5 shared ── */
+    .screen-header {
+      flex-shrink: 0;
+      padding: 14px 16px 12px;
+      display: flex; align-items: center; gap: 12px;
+      border-bottom: 1px solid var(--border);
     }
-    .street-label.show { opacity: 1; transform: translateY(0); }
+    .back-btn {
+      width: 36px; height: 36px; border-radius: 11px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.04);
+      color: #fff; font-size: 18px; cursor: pointer;
+    }
+    .screen-title { font-weight: 600; font-size: 15px; }
+    .scroll-body { flex: 1; overflow-y: auto; padding: 14px 16px 20px; }
+    .scroll-body.rel { position: relative; }
 
-    .wallet-card {
-      transform: scale(0.85) translateY(20px);
-      opacity: 0;
-      transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.5s ease;
+    .btn {
+      display: block; width: 100%;
+      padding: 13px 16px; border-radius: 13px;
+      font-weight: 700; font-size: 14px;
+      border: none; cursor: pointer; font-family: inherit;
+      transition: transform 0.15s, opacity 0.15s;
     }
-    .wallet-card.show { transform: scale(1) translateY(0); opacity: 1; }
-    #wallet-points.ding { animation: points-pop 0.5s ease; }
-    @keyframes points-pop {
-      0% { transform: scale(1); }
-      40% { transform: scale(1.12); color: #00D4AA; }
-      100% { transform: scale(1); }
+    .btn:active { transform: scale(0.98); }
+    .btn-teal { background: var(--teal); color: var(--bg); }
+    .btn-outline {
+      background: transparent; color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.14);
     }
+    .btn-amber { background: var(--amber); color: var(--bg); font-size: 15px; padding: 15px; }
 
-    .end-screen {
-      opacity: 0;
-      transition: opacity 1s ease;
-      pointer-events: none;
-    }
-    .end-screen.show { opacity: 1; }
+    .thumb-map { height: 150px; border-radius: 14px; overflow: hidden; margin-bottom: 14px; }
+    .spot-card { padding: 18px; text-align: center; margin-bottom: 14px; }
+    .spot-card .pin { font-size: 28px; }
+    .spot-card h3 { font-weight: 700; margin-top: 8px; font-size: 15px; }
+    .spot-card p { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
 
-    .badge-points {
-      opacity: 0;
-      transform: scale(0.8);
-      transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+    .option-btn {
+      width: 100%; text-align: left;
+      padding: 14px 16px; margin-bottom: 8px;
+      border-radius: 13px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border);
+      color: #fff; font-size: 14px; cursor: pointer; font-family: inherit;
     }
-    .badge-points.show { opacity: 1; transform: scale(1); }
-
-    .countdown-num {
-      display: inline-block;
-      animation: pop 0.35s ease;
-    }
-    @keyframes pop {
-      0% { transform: scale(1.4); opacity: 0.5; }
-      100% { transform: scale(1); opacity: 1; }
+    .option-btn.selected {
+      border-color: var(--teal);
+      background: rgba(0, 212, 170, 0.1);
     }
 
-    .btn-glow {
-      animation: glow-pulse 2s ease-in-out infinite;
+    .banner-new {
+      padding: 14px; border-radius: 14px; margin-bottom: 14px;
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(0, 212, 170, 0.15));
+      border: 1px solid rgba(59, 130, 246, 0.35);
+      animation: slide-in 0.45s ease;
     }
-    @keyframes glow-pulse {
-      0%, 100% { box-shadow: 0 0 12px rgba(0,212,170,0.4); }
-      50% { box-shadow: 0 0 24px rgba(0,212,170,0.75); }
+    @keyframes slide-in {
+      from { transform: translateX(-16px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    .prob-row { margin-bottom: 10px; }
+    .prob-head { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 5px; }
+    .prob-bar { height: 8px; border-radius: 4px; background: rgba(255,255,255,0.08); overflow: hidden; }
+    .prob-fill { height: 100%; background: var(--teal); border-radius: 4px; }
+
+    .map-split { flex: 0 0 38%; position: relative; min-height: 180px; }
+
+    .nav-overlay-top {
+      position: absolute; top: 12px; left: 12px; right: 12px; z-index: 500;
+      padding: 14px;
+    }
+    .nav-overlay-bottom {
+      position: absolute; bottom: 12px; left: 12px; right: 12px; z-index: 500;
+      padding: 14px; text-align: center;
+    }
+    .timer-big { font-size: 44px; font-weight: 800; color: var(--teal); line-height: 1; }
+    .seeker-dot {
+      width: 12px; height: 12px; background: var(--blue);
+      border: 2px solid #fff; border-radius: 50%;
+      box-shadow: 0 0 10px rgba(59, 130, 246, 0.9);
     }
 
-    .route-line { stroke-dasharray: 8 10; animation: dash-move 1s linear infinite; }
-    @keyframes dash-move { to { stroke-dashoffset: -18; } }
+    .wallet-hero {
+      background: linear-gradient(135deg, var(--teal) 0%, #00a884 100%);
+      border-radius: 18px; padding: 22px;
+      color: var(--bg); margin-bottom: 16px;
+    }
+    .wallet-hero .bal { font-size: 52px; font-weight: 900; line-height: 1; }
+    .wallet-progress {
+      height: 8px; border-radius: 4px;
+      background: rgba(0,0,0,0.2); margin-top: 14px; overflow: hidden;
+    }
+    .wallet-progress div { height: 100%; width: 62%; background: rgba(0,0,0,0.35); border-radius: 4px; }
+    .tx-row {
+      display: flex; justify-content: space-between;
+      font-size: 12px; padding: 6px 0;
+    }
+    .reward-card {
+      padding: 14px; border-radius: 14px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.02);
+      margin-bottom: 10px;
+    }
+    .reward-card h4 { font-size: 14px; font-weight: 600; }
+    .reward-card p { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+    .reward-card .btn { margin-top: 10px; padding: 10px; font-size: 13px; }
 
-    #vignette {
-      position: fixed; inset: 0; pointer-events: none;
-      background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.45) 100%);
-      z-index: 500;
+    .bottom-nav {
+      display: none;
+      flex-shrink: 0;
+      border-top: 1px solid var(--border);
+      background: rgba(10, 10, 15, 0.98);
+      padding: 8px 6px 12px;
     }
-    #fade-overlay {
-      position: fixed; inset: 0; background: #0a0a0a;
-      opacity: 0; transition: opacity 1s ease;
-      pointer-events: none; z-index: 900;
+    .bottom-nav.visible { display: flex; }
+    .nav-item {
+      flex: 1; background: none; border: none;
+      color: rgba(255,255,255,0.4);
+      font-size: 10px; font-weight: 600;
+      cursor: pointer; padding: 4px; font-family: inherit;
     }
-    #fade-overlay.show { opacity: 0.92; }
+    .nav-item .ico { display: block; font-size: 20px; margin-bottom: 3px; }
+    .nav-item.active { color: var(--teal); }
 
-    .restart-btn {
-      position: fixed; top: 16px; right: 16px; z-index: 2000;
-      padding: 10px 16px;
-      font-size: 13px; font-weight: 600;
-      color: rgba(255,255,255,0.9);
-      background: rgba(15,15,15,0.75);
-      backdrop-filter: blur(12px);
-      border: 1px solid rgba(255,255,255,0.15);
-      border-radius: 10px;
-      cursor: pointer;
-      transition: background 0.2s, border-color 0.2s;
+    .overlay-full {
+      position: absolute; inset: 0; z-index: 800;
+      background: rgba(10, 10, 15, 0.96);
+      display: none; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 28px; text-align: center;
     }
-    .restart-btn:hover { background: rgba(30,30,30,0.9); border-color: rgba(0,212,170,0.4); }
+    .overlay-full.show { display: flex; }
+
+    .confetti { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 700; }
+    .confetti i {
+      position: absolute; width: 8px; height: 8px; border-radius: 2px;
+      animation: fall 1.1s ease-out forwards;
+    }
+    @keyframes fall {
+      0% { transform: translateY(-10px) rotate(0); opacity: 1; }
+      100% { transform: translateY(380px) rotate(540deg); opacity: 0; }
+    }
+
+    #qr-modal {
+      position: fixed; inset: 0; z-index: 9999;
+      background: rgba(0,0,0,0.8);
+      display: none; align-items: center; justify-content: center;
+      padding: 24px;
+    }
+    #qr-modal.show { display: flex; }
+    #qr-modal .modal-inner { padding: 24px; text-align: center; max-width: 300px; width: 100%; }
+    #qr-canvas { border-radius: 10px; background: #fff; display: block; margin: 0 auto; }
   </style>
 </head>
 <body>
-  <div id="map"></div>
-  <div id="vignette"></div>
-  <div id="fade-overlay"></div>
+  <div class="page-wrap">
+    <div class="phone">
+      <span class="demo-badge">Demo mode</span>
 
-  <button type="button" class="restart-btn" onclick="location.reload()" aria-label="Restart demo">▶ Restart Demo</button>
+      <div class="screen-area">
 
-  <!-- Phase 1: Problem card -->
-  <div id="problem-card" class="overlay-card fixed bottom-8 left-1/2 -translate-x-1/2 z-[800] w-[min(92vw,420px)] p-5 glass">
-    <p class="text-white font-bold text-lg leading-snug">🔴 Split 3 — Nedjelja, 20:15h</p>
-    <p class="text-white/85 font-semibold text-sm mt-2">Sva mjesta zauzeta. Korisnik kruži već 38 min.</p>
-  </div>
+        <!-- ═══ SCREEN 0: Splash ═══ -->
+        <section id="screen-0" class="screen active">
+          <div class="splash">
+            <p class="splash-logo">Ae!</p>
+            <p class="splash-tag">Neighborhood solidarity in action.</p>
+            <p class="splash-sub">Parking in Split — no circling, no concrete.</p>
+            <button type="button" class="btn btn-teal" style="margin-top:48px;max-width:260px" onclick="App.go(1)">Enter app →</button>
+          </div>
+        </section>
 
-  <!-- Toast (Phases 2–3) -->
-  <div id="toast" class="toast-top fixed top-6 left-1/2 -translate-x-1/2 z-[850] w-[min(94vw,440px)] p-4 rounded-2xl glass">
-    <p id="toast-line1" class="text-white font-semibold text-sm"></p>
-    <p id="toast-line2" class="text-white/90 text-sm mt-1"></p>
-    <p id="toast-countdown" class="text-white font-bold text-2xl mt-2 hidden"></p>
-  </div>
-
-  <!-- Points badge -->
-  <div id="points-badge" class="badge-points fixed z-[750] pointer-events-none glass px-3 py-1.5 text-xs font-bold text-[#00D4AA] whitespace-nowrap">
-    +10 Polza bodova earned
-  </div>
-
-  <!-- Phone frame (Phase 4) -->
-  <div id="phone-frame" class="phone-frame fixed top-1/2 -translate-y-1/2 right-4 md:right-8 z-[820] w-[min(88vw,300px)]">
-    <div class="rounded-[2rem] p-3 bg-gradient-to-b from-zinc-700 to-zinc-900 shadow-2xl border border-white/10">
-      <div class="rounded-[1.5rem] bg-[#0f0f0f] overflow-hidden border border-white/5">
-        <div class="h-6 bg-black/40 flex items-center justify-center">
-          <div class="w-16 h-1 rounded-full bg-white/20"></div>
-        </div>
-        <div class="p-4 min-h-[280px]">
-          <div class="glass p-4 mt-6 shadow-lg">
-            <div class="flex items-start gap-3">
-              <div class="w-10 h-10 rounded-xl bg-[#00D4AA] flex items-center justify-center text-[#0f0f0f] font-extrabold text-sm shrink-0">Ae!</div>
-              <div class="flex-1 min-w-0">
-                <p class="text-white/60 text-[10px] font-semibold uppercase tracking-wide">Ae!</p>
-                <p class="text-white font-bold text-sm mt-0.5">Slobodno misto 180m od tebe! 🎯</p>
-                <p class="text-white/75 text-xs mt-1">Ulica Matice Hrvatske — stigne za ~2 min</p>
+        <!-- ═══ SCREEN 1: Mapa ═══ -->
+        <section id="screen-1" class="screen">
+          <div class="map-box">
+            <div id="map-1" class="leaflet-map"></div>
+            <header class="top-bar">
+              <span class="logo-sm">Ae!</span>
+              <div class="top-right">
+                <span class="polza-pill" id="polza-top">12 Polza</span>
+                <div class="avatar">H</div>
+              </div>
+            </header>
+            <div class="ai-live"><span class="ai-dot"></span> AI ◉ LIVE</div>
+            <div class="bottom-sheet">
+              <p class="sheet-title">Split 3 — 20:15h</p>
+              <p class="sheet-sub">6/7 spots occupied</p>
+              <div class="occ-bar"><div class="occ-fill"></div></div>
+              <div class="street-row"><span>Ul. Matice Hrvatske</span><span style="color:var(--teal)">✅ 1 free</span></div>
+              <div class="street-row"><span>Ul. Domovinskog rata</span><span style="color:var(--danger)">🔴 full</span></div>
+              <div class="street-row"><span>Šoltanska ul.</span><span style="color:var(--danger)">🔴 full</span></div>
+              <div class="cta-row">
+                <button type="button" class="btn btn-teal" onclick="App.go(2)">🚗 I'm leaving!</button>
+                <button type="button" class="btn btn-outline" onclick="App.go(3)">🔍 Find a spot</button>
               </div>
             </div>
-            <button type="button" class="btn-glow w-full mt-4 py-2.5 rounded-xl bg-[#00D4AA] text-[#0f0f0f] font-bold text-sm">
-              Navigiraj →
-            </button>
           </div>
-        </div>
+        </section>
+
+        <!-- ═══ SCREEN 2: Odlazim ═══ -->
+        <section id="screen-2" class="screen">
+          <header class="screen-header">
+            <button type="button" class="back-btn" onclick="App.go(1)">←</button>
+            <span class="screen-title">Leaving my spot</span>
+          </header>
+          <div class="scroll-body rel">
+            <div class="thumb-map"><div id="map-2" class="leaflet-map"></div></div>
+            <div class="glass spot-card">
+              <p class="pin">📍</p>
+              <h3>Ulica Matice Hrvatske 14</h3>
+              <p>Your current spot</p>
+            </div>
+            <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px">When are you leaving?</p>
+            <button type="button" class="option-btn selected" onclick="App.selectOpt(this)">⏱ Leaving now (&lt; 2 min)</button>
+            <button type="button" class="option-btn" onclick="App.selectOpt(this)">⏳ Leaving in ~5 min</button>
+            <button type="button" class="option-btn" onclick="App.selectOpt(this)">📅 Leaving in 15+ min</button>
+            <button type="button" class="btn btn-teal" style="margin-top:12px" onclick="App.publish()">POST SPOT 🎯</button>
+          </div>
+          <div id="confetti" class="confetti"></div>
+          <div id="publish-ok" class="overlay-full">
+            <p style="font-size:48px">✅</p>
+            <h2 style="font-size:20px;font-weight:700;margin-top:12px">Spot posted!</h2>
+            <p style="color:var(--teal);margin-top:8px;font-weight:600">You earned 10 Split-Polza points</p>
+            <p style="font-size:13px;color:var(--text-muted);margin-top:6px">Balance: <span id="saldo-after">22</span> Polza</p>
+            <button type="button" class="btn btn-teal" style="margin-top:28px;max-width:240px" onclick="App.go(1)">Back to map</button>
+          </div>
+        </section>
+
+        <!-- ═══ SCREEN 3: Nađi misto ═══ -->
+        <section id="screen-3" class="screen">
+          <header class="screen-header">
+            <button type="button" class="back-btn" onclick="App.go(1)">←</button>
+            <span class="screen-title">Find parking</span>
+          </header>
+          <div class="map-split"><div id="map-3" class="leaflet-map"></div></div>
+          <div class="scroll-body">
+            <div class="banner-new">
+              <p style="font-weight:700;font-size:14px">🔔 NEW!</p>
+              <p style="font-size:13px;margin-top:6px">Free spot 180m from you!</p>
+              <p style="font-size:12px;color:var(--text-muted);margin-top:4px">Ul. Matice Hrvatske 14 • just posted</p>
+              <p style="font-size:12px;color:var(--amber);font-weight:600;margin-top:8px">⏱ 2 users viewing this spot</p>
+            </div>
+            <p style="font-weight:700;font-size:14px;margin-bottom:10px">AI Prediction — Split 3</p>
+            <div class="glass" style="padding:12px;margin-bottom:10px">
+              <div class="prob-row">
+                <div class="prob-head"><span>Matice Hrvatske</span><span style="color:var(--teal)">78% · 1 free</span></div>
+                <div class="prob-bar"><div class="prob-fill" style="width:78%"></div></div>
+              </div>
+              <div class="prob-row">
+                <div class="prob-head"><span>Domovinskog rata</span><span>34%</span></div>
+                <div class="prob-bar"><div class="prob-fill" style="width:34%;background:var(--amber)"></div></div>
+              </div>
+              <div class="prob-row" style="margin-bottom:0">
+                <div class="prob-head"><span>Šoltanska</span><span style="color:var(--danger)">11%</span></div>
+                <div class="prob-bar"><div class="prob-fill" style="width:11%;background:var(--danger)"></div></div>
+              </div>
+            </div>
+            <p style="font-size:10px;color:var(--text-muted);text-align:center;margin-bottom:14px">Based on 2,847 trips in this neighborhood</p>
+            <button type="button" class="btn btn-amber" onclick="App.go(4)">RESERVE → 5 Polza</button>
+          </div>
+        </section>
+
+        <!-- ═══ SCREEN 4: Navigacija ═══ -->
+        <section id="screen-4" class="screen">
+          <div class="map-box">
+            <div id="map-4" class="leaflet-map"></div>
+            <div class="nav-overlay-top glass">
+              <p style="font-size:11px;color:var(--text-muted)">🎯 Reserved! Arriving in:</p>
+              <p class="timer-big" id="nav-timer">1:47</p>
+              <p style="font-size:12px;font-weight:600;margin-top:4px">Ul. Matice Hrvatske 14</p>
+            </div>
+            <div class="nav-overlay-bottom glass">
+              <p style="font-weight:600;font-size:13px">📍 Follow route ↓</p>
+              <p style="font-size:11px;color:var(--text-muted);margin-top:6px" id="turn-hint">Turn left onto Ul. Domovinskog rata</p>
+            </div>
+          </div>
+          <div id="park-ok" class="overlay-full">
+            <p style="font-size:48px">✅</p>
+            <h2 style="font-size:20px;font-weight:700;margin-top:12px">You're parked!</h2>
+            <p style="color:var(--text-muted);font-size:14px;margin-top:8px">You saved ~35 min of circling</p>
+            <p style="color:var(--amber);font-size:13px;font-weight:600;margin-top:10px">-5 Polza spent | +2 Polza bonus (fast arrival)</p>
+            <button type="button" class="btn btn-teal" style="margin-top:28px;max-width:240px" onclick="App.finishNav()">Go back</button>
+          </div>
+        </section>
+
+        <!-- ═══ SCREEN 5: Split-Polza ═══ -->
+        <section id="screen-5" class="screen">
+          <header class="screen-header">
+            <button type="button" class="back-btn" onclick="App.go(1)">←</button>
+            <span class="screen-title">💰 Split-Polza Wallet</span>
+          </header>
+          <div class="scroll-body">
+            <div class="wallet-hero">
+              <p class="bal" id="wallet-bal">47</p>
+              <p style="font-weight:600;opacity:0.85">Split-Polza points</p>
+              <div class="wallet-progress"><div></div></div>
+              <p style="font-size:11px;margin-top:8px;opacity:0.75">3 more points to next reward</p>
+            </div>
+            <p style="font-weight:700;font-size:14px;margin-bottom:10px">Activity</p>
+            <div class="glass" style="padding:14px;margin-bottom:16px">
+              <div class="tx-row"><span>✅ +10 Spot posted</span><span style="color:var(--text-muted)">Today 20:15</span></div>
+              <div class="tx-row"><span>🔍 -5 Reservation</span><span style="color:var(--text-muted)">Today 20:13</span></div>
+              <div class="tx-row"><span>✅ +10 Spot posted</span><span style="color:var(--text-muted)">Yesterday 18:44</span></div>
+              <div class="tx-row"><span>🚶 +8 Digital Steward</span><span style="color:var(--text-muted)">Tue 09:22</span></div>
+            </div>
+            <p style="font-weight:700;font-size:14px;margin-bottom:10px">Rewards</p>
+            <div class="reward-card">
+              <h4>☕ Coffee — Zlatna Vrata Café</h4>
+              <p>15 Polza • 0.3 km</p>
+              <button type="button" class="btn btn-outline" onclick="App.openQR()">QR Code →</button>
+            </div>
+            <div class="reward-card">
+              <h4>🚌 Transit pass (1 ride)</h4>
+              <p>20 Polza</p>
+              <button type="button" class="btn btn-outline">Activate →</button>
+            </div>
+            <div class="reward-card">
+              <h4>🍕 Pizza — Bruna Pizzeria</h4>
+              <p>35 Polza • 0.8 km</p>
+              <button type="button" class="btn btn-outline" onclick="App.openQR()">QR Code →</button>
+            </div>
+          </div>
+        </section>
+
       </div>
+
+      <nav class="bottom-nav" id="bottom-nav">
+        <button type="button" class="nav-item active" data-nav="1" onclick="App.go(1)"><span class="ico">🗺</span>Map</button>
+        <button type="button" class="nav-item" data-nav="2" onclick="App.go(2)"><span class="ico">🚗</span>Leaving</button>
+        <button type="button" class="nav-item" data-nav="3" onclick="App.go(3)"><span class="ico">🔍</span>Find</button>
+        <button type="button" class="nav-item" data-nav="5" onclick="App.go(5)"><span class="ico">💰</span>Polza</button>
+      </nav>
     </div>
   </div>
 
-  <!-- AI card (Phase 5) -->
-  <div id="ai-card" class="fixed bottom-24 left-1/2 -translate-x-1/2 z-[800] w-[min(92vw,400px)] p-3 glass opacity-0 transition-opacity duration-500 pointer-events-none">
-    <p class="text-white/90 text-xs font-medium text-center">Ae! AI — predviđanje temeljeno na <span class="text-[#00D4AA] font-bold">2.847</span> vožnji u ovom kvartu</p>
-  </div>
-
-  <!-- Wallet (Phase 6) -->
-  <div id="wallet" class="wallet-card fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[950] w-[min(92vw,340px)]">
-    <div class="glass p-6 text-center border-2 border-[#00D4AA]/20">
-      <p class="text-[#00D4AA] font-bold text-lg">💰 Split-Polza</p>
-      <p class="text-white font-extrabold text-3xl mt-2" id="wallet-points">Tvoji bodovi: 10</p>
-      <div class="border-t border-white/10 my-4"></div>
-      <p class="text-white/80 font-semibold text-sm">🎁 Zamijeni za:</p>
-      <p class="text-white text-sm mt-2">☕ Kava u Kafiću Žnjan</p>
-      <p class="text-white text-sm mt-1">🚌 Promet karta</p>
-      <button type="button" class="mt-4 px-6 py-2 rounded-xl bg-white/10 text-[#00D4AA] font-bold text-sm border border-[#00D4AA]/30">
-        Iskoristi → <span class="text-lg">▣</span>
-      </button>
+  <div id="qr-modal">
+    <div class="glass modal-inner">
+      <canvas id="qr-canvas" width="180" height="180"></canvas>
+      <p style="font-weight:700;margin-top:16px">Show cashier</p>
+      <p style="color:var(--teal);font-size:14px;margin-top:8px" id="qr-expiry">Expires in 4:59</p>
+      <button type="button" class="btn btn-outline" style="margin-top:16px" onclick="App.closeQR()">Close</button>
     </div>
   </div>
 
-  <!-- End card (Phase 7) -->
-  <div id="end-screen" class="end-screen fixed inset-0 z-[1000] flex flex-col items-center justify-center text-center px-6">
-    <h1 class="text-6xl md:text-7xl font-extrabold text-white tracking-tight">Ae!</h1>
-    <p class="text-[#00D4AA] text-xl md:text-2xl font-bold mt-4">Splitska solidarnost na djelu.</p>
-    <p class="text-white/70 text-base mt-3">Parking • Pazar • Plaže • Eventi</p>
-    <p class="text-white/50 text-sm mt-6 max-w-md">Nula klikova. Nula betona. Samo dišpet i AI.</p>
-  </div>
-
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
   <script>
-(function () {
-  'use strict';
-
-  const PARKING = [
-    [43.5128, 16.4821],
-    [43.5135, 16.4831],
-    [43.5140, 16.4818],
-    [43.5125, 16.4840],
-    [43.5142, 16.4845],
-    [43.5118, 16.4825],
-    [43.5131, 16.4855]
-  ];
-  const FREE_SPOT_INDEX = 2;
-  const SEEKER_START = [43.5152, 16.4812];
-  const CAR_LOOP = [
-    [43.5122, 16.4815],
-    [43.5122, 16.4850],
-    [43.5145, 16.4850],
-    [43.5145, 16.4815],
-    [43.5122, 16.4815]
-  ];
-  const STREET_LABELS = [
-    { lat: 43.5138, lng: 16.4825, text: 'Matice Hrvatske: 92% slobodno ✅' },
-    { lat: 43.5126, lng: 16.4838, text: 'Domovinskog rata: 34% slobodno 🟡' },
-    { lat: 43.5134, lng: 16.4852, text: 'Šoltanska: 11% slobodno 🔴' }
-  ];
-
-  let map, pinMarkers = [], streetMarkers = [];
-  let loopCarMarker, departCarMarker, seekerMarker;
-  let routeLine, routeFull = [];
-  let animFrame = null;
-  let loopAnimId = null;
-  let seekerAnimId = null;
-  let demoTimers = [];
-
-  function $(id) { return document.getElementById(id); }
-  function delay(ms) {
-    return new Promise(function (resolve) {
-      const t = setTimeout(resolve, ms);
-      demoTimers.push(t);
-    });
-  }
-  function clearDemo() {
-    demoTimers.forEach(clearTimeout);
-    demoTimers = [];
-    if (animFrame) cancelAnimationFrame(animFrame);
-    if (loopAnimId) cancelAnimationFrame(loopAnimId);
-    if (seekerAnimId) cancelAnimationFrame(seekerAnimId);
-  }
-
+  /* ── Shared utilities ── */
   function playDing() {
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(880, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.08);
-      gain.gain.setValueAtTime(0.25, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.35);
-      osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + 0.35);
-      setTimeout(function () {
-        const o2 = ctx.createOscillator();
-        const g2 = ctx.createGain();
-        o2.connect(g2);
-        g2.connect(ctx.destination);
-        o2.type = 'sine';
-        o2.frequency.value = 1760;
-        g2.gain.setValueAtTime(0.12, ctx.currentTime);
-        g2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
-        o2.start();
-        o2.stop(ctx.currentTime + 0.2);
-      }, 120);
-    } catch (e) { /* silent */ }
+      [523, 659].forEach(function (freq, i) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.frequency.value = freq;
+        osc.type = 'sine';
+        gain.gain.setValueAtTime(0.3, ctx.currentTime + i * 0.15);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.15 + 0.8);
+        osc.start(ctx.currentTime + i * 0.15);
+        osc.stop(ctx.currentTime + i * 0.15 + 0.8);
+      });
+    } catch (e) {}
   }
 
-  function disableMapInteraction() {
-    map.dragging.disable();
-    map.touchZoom.disable();
-    map.doubleClickZoom.disable();
-    map.scrollWheelZoom.disable();
-    map.boxZoom.disable();
-    map.keyboard.disable();
-    if (map.tap) map.tap.disable();
-  }
-
-  function createRedPin(latlng) {
-    return L.marker(latlng, {
-      icon: L.divIcon({ className: 'pin-wrap', html: '<div class="pin-red"></div>', iconSize: [18, 18], iconAnchor: [9, 9] }),
-      interactive: false
+  function generateFakeQR(canvasId) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const size = 29;
+    const cell = canvas.width / size;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    [[0,0],[0,size-7],[size-7,0]].forEach(function (rc) {
+      const r = rc[0], c = rc[1];
+      ctx.fillStyle = '#000';
+      ctx.fillRect(c * cell, r * cell, 7 * cell, 7 * cell);
+      ctx.fillStyle = '#fff';
+      ctx.fillRect((c + 1) * cell, (r + 1) * cell, 5 * cell, 5 * cell);
+      ctx.fillStyle = '#000';
+      ctx.fillRect((c + 2) * cell, (r + 2) * cell, 3 * cell, 3 * cell);
     });
-  }
-
-  function createGreenPin(latlng) {
-    const html = '<div class="ripple-wrap">' +
-      '<div class="ripple wave1"></div><div class="ripple wave2"></div><div class="ripple wave3"></div>' +
-      '<div class="pin-green">✅</div></div>';
-    return L.marker(latlng, {
-      icon: L.divIcon({ className: 'pin-wrap', html: html, iconSize: [22, 22], iconAnchor: [11, 11] }),
-      interactive: false
-    });
-  }
-
-  function createCarMarker(latlng, zIndex) {
-    return L.marker(latlng, {
-      icon: L.divIcon({ className: 'car-wrap', html: '<div class="car-icon">🚗</div>', iconSize: [24, 24], iconAnchor: [12, 12] }),
-      interactive: false,
-      zIndexOffset: zIndex || 500
-    });
-  }
-
-  function distSegment(a, b) {
-    const dlat = b[0] - a[0], dlng = b[1] - a[1];
-    return Math.sqrt(dlat * dlat + dlng * dlng);
-  }
-
-  function interpolatePath(path, t) {
-    const segments = [];
-    let total = 0;
-    for (let i = 0; i < path.length - 1; i++) {
-      const d = distSegment(path[i], path[i + 1]);
-      segments.push(d);
-      total += d;
-    }
-    let target = (t % 1) * total;
-    for (let i = 0; i < segments.length; i++) {
-      if (target <= segments[i]) {
-        const frac = segments[i] > 0 ? target / segments[i] : 0;
-        return [
-          path[i][0] + (path[i + 1][0] - path[i][0]) * frac,
-          path[i][1] + (path[i + 1][1] - path[i][1]) * frac
-        ];
-      }
-      target -= segments[i];
-    }
-    return path[path.length - 1];
-  }
-
-  function bearing(a, b) {
-    const dy = b[0] - a[0], dx = b[1] - a[1];
-    return Math.atan2(dx, dy) * (180 / Math.PI);
-  }
-
-  function startLoopCar() {
-    const duration = 14000;
-    const start = performance.now();
-    function tick(now) {
-      const t = ((now - start) % duration) / duration;
-      const pos = interpolatePath(CAR_LOOP, t);
-      const ahead = interpolatePath(CAR_LOOP, (t + 0.008) % 1);
-      loopCarMarker.setLatLng(pos);
-      const el = loopCarMarker.getElement();
-      if (el) {
-        const inner = el.querySelector('.car-icon');
-        if (inner) inner.style.transform = 'rotate(' + bearing(pos, ahead) + 'deg)';
-      }
-      loopAnimId = requestAnimationFrame(tick);
-    }
-    loopAnimId = requestAnimationFrame(tick);
-  }
-
-  function stopLoopCar() {
-    if (loopAnimId) { cancelAnimationFrame(loopAnimId); loopAnimId = null; }
-    if (loopCarMarker) { map.removeLayer(loopCarMarker); loopCarMarker = null; }
-  }
-
-  function setToast(bg, line1, line2, showCountdown) {
-    const toast = $('toast');
-    toast.style.background = bg;
-    toast.style.borderColor = 'rgba(255,255,255,0.15)';
-    $('toast-line1').textContent = line1;
-    $('toast-line2').textContent = line2;
-    $('toast-countdown').classList.toggle('hidden', !showCountdown);
-  }
-
-  function positionBadge() {
-    const spot = pinMarkers[FREE_SPOT_INDEX];
-    if (!spot) return;
-    const pt = map.latLngToContainerPoint(spot.getLatLng());
-    const badge = $('points-badge');
-    badge.style.left = (pt.x + 28) + 'px';
-    badge.style.top = (pt.y - 12) + 'px';
-  }
-
-  function buildRoute(from, to) {
-    const steps = 24;
-    const pts = [];
-    for (let i = 0; i <= steps; i++) {
-      const f = i / steps;
-      pts.push([from[0] + (to[0] - from[0]) * f, from[1] + (to[1] - from[1]) * f]);
-    }
-    return pts;
-  }
-
-  function animateRouteDraw(pts, duration, onDone) {
-    routeFull = pts;
-    if (routeLine) map.removeLayer(routeLine);
-    routeLine = L.polyline([pts[0]], {
-      color: '#3B82F6',
-      weight: 3,
-      opacity: 0.85,
-      dashArray: '8, 10',
-      className: 'route-line',
-      interactive: false
-    }).addTo(map);
-
-    const start = performance.now();
-    function tick(now) {
-      const p = Math.min(1, (now - start) / duration);
-      const count = Math.max(2, Math.floor(p * pts.length));
-      routeLine.setLatLngs(pts.slice(0, count));
-      if (p < 1) animFrame = requestAnimationFrame(tick);
-      else if (onDone) onDone();
-    }
-    animFrame = requestAnimationFrame(tick);
-  }
-
-  function animateSeekerAlong(pts, duration) {
-    const start = performance.now();
-    function tick(now) {
-      const p = Math.min(1, (now - start) / duration);
-      const pos = interpolatePath(pts, p);
-      const ahead = interpolatePath(pts, Math.min(1, p + 0.02));
-      seekerMarker.setLatLng(pos);
-      if (p < 1) seekerAnimId = requestAnimationFrame(tick);
-    }
-    seekerAnimId = requestAnimationFrame(tick);
-  }
-
-  function animateCarAway(from, duration) {
-    const to = [from[0] + 0.004, from[1] - 0.006];
-    const start = performance.now();
-    function tick(now) {
-      const p = Math.min(1, (now - start) / duration);
-      const lat = from[0] + (to[0] - from[0]) * p;
-      const lng = from[1] + (to[1] - from[1]) * p;
-      departCarMarker.setLatLng([lat, lng]);
-      const el = departCarMarker.getElement();
-      if (el) {
-        const inner = el.querySelector('.car-icon');
-        if (inner) {
-          inner.style.transform = 'rotate(-35deg)';
-          inner.style.opacity = String(1 - p * 0.85);
+    for (let r = 0; r < size; r++) {
+      for (let c = 0; c < size; c++) {
+        if (Math.random() > 0.5) {
+          ctx.fillStyle = '#000';
+          ctx.fillRect(c * cell, r * cell, cell, cell);
         }
       }
-      if (p < 1) {
-        animFrame = requestAnimationFrame(tick);
-      } else if (departCarMarker) {
-        map.removeLayer(departCarMarker);
-        departCarMarker = null;
-      }
     }
-    animFrame = requestAnimationFrame(tick);
   }
 
-  function transformPinToGreen() {
-    const old = pinMarkers[FREE_SPOT_INDEX];
-    const latlng = old.getLatLng();
-    map.removeLayer(old);
-    const green = createGreenPin(latlng);
-    green.addTo(map);
-    pinMarkers[FREE_SPOT_INDEX] = green;
-  }
+  const PARKING = [
+    [43.5128, 16.4821], [43.5135, 16.4831], [43.5140, 16.4818],
+    [43.5125, 16.4840], [43.5142, 16.4845], [43.5118, 16.4825], [43.5131, 16.4855]
+  ];
+  const FREE = 2;
+  const CENTER = [43.5133, 16.4827];
+  const SEEKER = [43.5152, 16.4812];
+  const TILE = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
 
-  async function runDemo() {
-    clearDemo();
-    const mapEl = $('map');
-    mapEl.classList.remove('dimmed');
-    $('fade-overlay').classList.remove('show');
-    $('end-screen').classList.remove('show');
-    $('wallet').classList.remove('show');
-    $('ai-card').style.opacity = '0';
-    $('phone-frame').classList.remove('show', 'hide');
-    $('toast').classList.remove('show');
-    $('problem-card').classList.remove('show', 'hide');
-    $('points-badge').classList.remove('show');
-    $('toast').style.background = '';
+  const App = {
+    screen: 0,
+    polza: 12,
+    maps: {},
+    navTimer: null,
+    seekerAnim: null,
+    qrTimer: null,
 
-    pinMarkers.forEach(function (m) { map.removeLayer(m); });
-    pinMarkers = [];
-    streetMarkers.forEach(function (m) { map.removeLayer(m); });
-    streetMarkers = [];
-    if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
-    if (seekerMarker) { map.removeLayer(seekerMarker); seekerMarker = null; }
-    stopLoopCar();
-    if (departCarMarker) { map.removeLayer(departCarMarker); departCarMarker = null; }
-
-    map.setView([43.5133, 16.4827], 16);
-    disableMapInteraction();
-
-    // PHASE 1 — Problem (0–8s)
-    await delay(200);
-    mapEl.classList.add('visible');
-
-    PARKING.forEach(function (coords) {
-      const m = createRedPin(coords);
-      m.addTo(map);
-      pinMarkers.push(m);
-    });
-
-    loopCarMarker = createCarMarker(CAR_LOOP[0], 600);
-    loopCarMarker.addTo(map);
-    startLoopCar();
-
-    await delay(400);
-    $('problem-card').classList.add('show');
-
-    await delay(8200);
-    $('problem-card').classList.add('hide');
-
-    // PHASE 2 — Trigger (8–18s)
-    await delay(600);
-    $('problem-card').classList.remove('show', 'hide');
-
-    stopLoopCar();
-    const spot3 = PARKING[FREE_SPOT_INDEX];
-    departCarMarker = createCarMarker(spot3, 700);
-    departCarMarker.addTo(map);
-
-    setToast('#3B82F6', 'Ae! detektirao: spojen na Bluetooth auta 🚗', 'Automatsko oslobađanje mjesta za 5s...', true);
-    $('toast').classList.add('show');
-
-    for (let n = 5; n >= 1; n--) {
-      const cd = $('toast-countdown');
-      cd.textContent = String(n);
-      cd.classList.remove('countdown-num');
-      void cd.offsetWidth;
-      cd.classList.add('countdown-num');
-      await delay(1000);
-    }
-    $('toast-countdown').classList.add('hidden');
-
-    // PHASE 3 — Spot Opens (18–28s)
-    transformPinToGreen();
-
-    setToast('rgba(0,212,170,0.95)', '🟢 Misto slobodno! Ulica Matice Hrvatske br. 14', '', false);
-    $('toast').style.background = 'rgba(0,80,65,0.92)';
-
-    animateCarAway(spot3, 3200);
-
-    await delay(400);
-    positionBadge();
-    $('points-badge').classList.add('show');
-    map.on('move', positionBadge);
-    map.on('zoom', positionBadge);
-
-    await delay(6600);
-    $('toast').classList.remove('show');
-    $('points-badge').classList.remove('show');
-
-    // PHASE 4 — Notification (28–40s)
-    $('phone-frame').classList.add('show');
-
-    seekerMarker = L.marker(SEEKER_START, {
-      icon: L.divIcon({ className: 'seeker-wrap', html: '<div class="seeker-dot"></div>', iconSize: [14, 14], iconAnchor: [7, 7] }),
-      interactive: false,
-      zIndexOffset: 400
-    }).addTo(map);
-
-    const freeSpot = PARKING[FREE_SPOT_INDEX];
-    const routePts = buildRoute(SEEKER_START, freeSpot);
-
-    await delay(800);
-    animateRouteDraw(routePts, 2200, function () {
-      animateSeekerAlong(routePts, 6500);
-    });
-
-    await delay(11500);
-    $('phone-frame').classList.add('hide');
-    $('phone-frame').classList.remove('show');
-    if (seekerAnimId) cancelAnimationFrame(seekerAnimId);
-
-    // PHASE 5 — AI Layer (40–48s)
-    STREET_LABELS.forEach(function (s, i) {
-      const m = L.marker([s.lat, s.lng], {
-        icon: L.divIcon({
-          className: 'street-wrap',
-          html: '<div class="street-label" id="street-' + i + '">' + s.text + '</div>',
-          iconSize: [1, 1],
-          iconAnchor: [0, 0]
-        }),
-        interactive: false
+    go(n) {
+      this.screen = n;
+      document.querySelectorAll('.screen').forEach(function (s) { s.classList.remove('active'); });
+      document.getElementById('screen-' + n).classList.add('active');
+      document.querySelectorAll('.nav-item').forEach(function (b) {
+        b.classList.toggle('active', parseInt(b.dataset.nav, 10) === n);
       });
-      m.addTo(map);
-      streetMarkers.push(m);
-      setTimeout(function () {
-        const el = document.getElementById('street-' + i);
-        if (el) el.classList.add('show');
-      }, 200 + i * 350);
-    });
+      document.getElementById('bottom-nav').classList.toggle('visible', n !== 0);
 
-    await delay(300);
-    $('ai-card').style.opacity = '1';
+      if (n === 1) this.initMap('map-1', { green: FREE });
+      if (n === 2) this.initMap('map-2', { zoom: 17, highlight: true });
+      if (n === 3) this.initMap('map-3', { green: FREE });
+      if (n === 4) this.startNav();
+      if (n === 5) this.updatePolza();
+    },
 
-    await delay(7500);
-    $('ai-card').style.opacity = '0';
-    streetMarkers.forEach(function (m) {
-      const el = m.getElement();
-      if (el) {
-        const lbl = el.querySelector('.street-label');
-        if (lbl) lbl.classList.remove('show');
+    updatePolza() {
+      document.getElementById('polza-top').textContent = this.polza + ' Polza';
+      document.getElementById('wallet-bal').textContent = String(47 + (this.polza - 12));
+    },
+
+    lockMap(map) {
+      map.dragging.disable();
+      map.touchZoom.disable();
+      map.doubleClickZoom.disable();
+      map.scrollWheelZoom.disable();
+      map.boxZoom.disable();
+      map.keyboard.disable();
+      if (map.tap) map.tap.disable();
+    },
+
+    pinIcon(green) {
+      return L.divIcon({
+        className: 'pin-wrap',
+        html: '<div class="' + (green ? 'pin-green' : 'pin-red') + '"></div>',
+        iconSize: green ? [16, 16] : [14, 14],
+        iconAnchor: green ? [8, 8] : [7, 7]
+      });
+    },
+
+    addPins(map, greenIdx) {
+      PARKING.forEach(function (c, i) {
+        L.marker(c, { icon: App.pinIcon(i === greenIdx), interactive: false }).addTo(map);
+      });
+    },
+
+    initMap(id, opts) {
+      opts = opts || {};
+      if (this.maps[id]) {
+        setTimeout(function () { App.maps[id].invalidateSize(); }, 80);
+        return this.maps[id];
       }
-    });
+      const map = L.map(id, {
+        center: CENTER,
+        zoom: opts.zoom || 16,
+        zoomControl: false,
+        attributionControl: false
+      });
+      L.tileLayer(TILE, { subdomains: 'abcd', maxZoom: 20 }).addTo(map);
+      this.lockMap(map);
+      if (opts.green !== undefined) this.addPins(map, opts.green);
+      if (opts.highlight) {
+        L.circle(PARKING[FREE], {
+          radius: 45, color: '#00D4AA', fillColor: '#00D4AA',
+          fillOpacity: 0.12, weight: 2
+        }).addTo(map);
+        this.addPins(map, -1);
+      }
+      this.maps[id] = map;
+      return map;
+    },
 
-    // PHASE 6 — Wallet (48–56s)
-    mapEl.classList.add('dimmed');
-    await delay(400);
-    $('wallet').classList.add('show');
-    playDing();
-    const wp = $('wallet-points');
-    wp.classList.remove('ding');
-    void wp.offsetWidth;
-    wp.classList.add('ding');
+    selectOpt(btn) {
+      document.querySelectorAll('.option-btn').forEach(function (b) { b.classList.remove('selected'); });
+      btn.classList.add('selected');
+    },
 
-    await delay(7800);
-    $('wallet').classList.remove('show');
-    mapEl.classList.remove('dimmed');
+    confetti() {
+      const box = document.getElementById('confetti');
+      box.innerHTML = '';
+      const cols = ['#00D4AA', '#3B82F6', '#F59E0B', '#FF4444', '#fff'];
+      for (let i = 0; i < 36; i++) {
+        const el = document.createElement('i');
+        el.style.left = Math.random() * 100 + '%';
+        el.style.background = cols[i % cols.length];
+        el.style.animationDelay = Math.random() * 0.25 + 's';
+        box.appendChild(el);
+      }
+    },
 
-    // PHASE 7 — End (56–60s)
-    $('fade-overlay').classList.add('show');
-    await delay(700);
-    $('end-screen').classList.add('show');
-    await delay(3300);
-  }
+    publish() {
+      this.confetti();
+      playDing();
+      this.polza += 10;
+      document.getElementById('saldo-after').textContent = this.polza;
+      this.updatePolza();
+      document.getElementById('publish-ok').classList.add('show');
+    },
 
-  function init() {
-    map = L.map('map', {
-      center: [43.5133, 16.4827],
-      zoom: 16,
-      zoomControl: false,
-      attributionControl: true
-    });
+    startNav() {
+      document.getElementById('park-ok').classList.remove('show');
+      const map = this.initMap('map-4', {});
+      this.addPins(map, FREE);
+      const route = [];
+      for (let i = 0; i <= 24; i++) {
+        const f = i / 24;
+        route.push([
+          SEEKER[0] + (PARKING[FREE][0] - SEEKER[0]) * f,
+          SEEKER[1] + (PARKING[FREE][1] - SEEKER[1]) * f
+        ]);
+      }
+      L.polyline(route, { color: '#3B82F6', weight: 3, dashArray: '8,10' }).addTo(map);
+      const seeker = L.marker(SEEKER, {
+        icon: L.divIcon({
+          className: 'seeker-wrap',
+          html: '<div class="seeker-dot"></div>',
+          iconSize: [12, 12], iconAnchor: [6, 6]
+        })
+      }).addTo(map);
+      let t = 0;
+      if (this.seekerAnim) cancelAnimationFrame(this.seekerAnim);
+      const move = function () {
+        t = Math.min(1, t + 0.0035);
+        seeker.setLatLng(route[Math.floor(t * (route.length - 1))]);
+        if (t < 1) App.seekerAnim = requestAnimationFrame(move);
+      };
+      App.seekerAnim = requestAnimationFrame(move);
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
-      subdomains: 'abcd',
-      maxZoom: 20
-    }).addTo(map);
+      let secs = 107;
+      const el = document.getElementById('nav-timer');
+      if (this.navTimer) clearInterval(this.navTimer);
+      this.navTimer = setInterval(function () {
+        secs--;
+        el.textContent = Math.floor(secs / 60) + ':' + String(secs % 60).padStart(2, '0');
+        if (secs <= 90) document.getElementById('park-ok').classList.add('show');
+        if (secs <= 0) clearInterval(App.navTimer);
+      }, 1000);
+      el.textContent = '1:47';
+    },
 
-    disableMapInteraction();
-    runDemo();
-  }
+    finishNav() {
+      this.polza = this.polza - 5 + 2;
+      this.updatePolza();
+      if (this.navTimer) clearInterval(this.navTimer);
+      this.go(1);
+    },
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
-  } else {
-    init();
-  }
-})();
+    openQR() {
+      generateFakeQR('qr-canvas');
+      document.getElementById('qr-modal').classList.add('show');
+      let s = 299;
+      const exp = document.getElementById('qr-expiry');
+      if (this.qrTimer) clearInterval(this.qrTimer);
+      this.qrTimer = setInterval(function () {
+        s--;
+        exp.textContent = 'Expires in ' + Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+        if (s <= 0) clearInterval(App.qrTimer);
+      }, 1000);
+    },
+
+    closeQR() {
+      document.getElementById('qr-modal').classList.remove('show');
+      if (this.qrTimer) clearInterval(this.qrTimer);
+    }
+  };
+
+  setTimeout(function () { if (App.screen === 0) App.go(1); }, 2500);
   </script>
 </body>
 </html>

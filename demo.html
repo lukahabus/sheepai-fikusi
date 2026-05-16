@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ae! — 60s Demo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <style>
+    /* ── Same tokens as index.html ── */
+    :root {
+      --bg: #0a0a0f;
+      --teal: #00D4AA;
+      --danger: #FF4444;
+      --blue: #3B82F6;
+      --amber: #F59E0B;
+      --glass: rgba(15, 15, 22, 0.88);
+      --border: rgba(255, 255, 255, 0.08);
+      --text-muted: rgba(255, 255, 255, 0.55);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      height: 100%; overflow: hidden;
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg); color: #fff;
+    }
+    #map {
+      width: 100%; height: 100%;
+      opacity: 0; transition: opacity 1.2s ease;
+    }
+    #map.visible { opacity: 1; }
+    #map.blurred { filter: blur(5px); transition: filter 0.6s ease; }
+    #map.dimmed { opacity: 0.3; transition: opacity 0.7s ease; }
+    .leaflet-container { background: var(--bg); }
+    .pin-wrap, .car-wrap, .street-wrap, .seeker-wrap, .glow-wrap {
+      background: transparent !important; border: none !important;
+    }
+
+    .pin-red {
+      width: 18px; height: 18px; background: var(--danger);
+      border: 2px solid #fff; border-radius: 50%;
+      box-shadow: 0 0 12px rgba(255,68,68,0.75);
+      animation: pulse-red 1.4s ease-in-out infinite;
+    }
+    @keyframes pulse-red { 50% { transform: scale(1.22); } }
+
+    .pin-green-wrap { position: relative; width: 22px; height: 22px; }
+    .ripple {
+      position: absolute; left: 50%; top: 50%;
+      width: 22px; height: 22px; margin: -11px 0 0 -11px;
+      border: 2px solid var(--teal); border-radius: 50%;
+      animation: shock 1.1s ease-out forwards;
+    }
+    .ripple.r2 { animation-delay: 0.32s; }
+    .ripple.r3 { animation-delay: 0.64s; }
+    @keyframes shock {
+      0% { transform: scale(1); opacity: 0.9; }
+      100% { transform: scale(5.5); opacity: 0; }
+    }
+    .pin-green {
+      width: 22px; height: 22px; background: var(--teal);
+      border: 2px solid #fff; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; box-shadow: 0 0 16px rgba(0,212,170,0.85);
+    }
+    .pin-glow {
+      width: 30px; height: 30px; margin: -6px 0 0 -6px;
+      background: radial-gradient(circle, rgba(59,130,246,0.75), transparent 70%);
+      border-radius: 50%;
+      animation: glow-blue 1s ease-in-out infinite;
+    }
+    @keyframes glow-blue { 50% { transform: scale(1.25); opacity: 1; } }
+
+    .car-icon { font-size: 22px; filter: drop-shadow(0 2px 5px rgba(0,0,0,0.5)); }
+    .seeker-dot {
+      width: 14px; height: 14px; background: var(--blue);
+      border: 2px solid #fff; border-radius: 50%;
+      box-shadow: 0 0 12px rgba(59,130,246,0.9);
+    }
+
+    .glass {
+      background: var(--glass);
+      backdrop-filter: blur(18px);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+    }
+    .card-bottom {
+      position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(130%);
+      z-index: 800; width: min(92vw, 420px); padding: 18px 20px;
+      opacity: 0; transition: transform 0.65s cubic-bezier(0.22,1,0.36,1), opacity 0.45s ease;
+    }
+    .card-bottom.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+    .card-bottom.hide { transform: translateX(-50%) translateY(24px); opacity: 0; }
+
+    .toast {
+      position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-140%);
+      z-index: 850; width: min(94vw, 440px); padding: 16px 18px;
+      opacity: 0; transition: transform 0.5s ease, opacity 0.4s ease;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+    .toast-line1 { font-weight: 600; font-size: 14px; }
+    .toast-line2 { font-size: 13px; color: rgba(255,255,255,0.85); margin-top: 4px; }
+    .countdown { font-size: 36px; font-weight: 800; margin-top: 8px; }
+    .hidden { display: none !important; }
+    .countdown.flip { animation: flip 0.35s ease; }
+    @keyframes flip {
+      0% { transform: scale(1.3); opacity: 0.4; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    .phone-frame {
+      position: fixed; top: 50%; right: 24px; transform: translate(110%, -50%);
+      z-index: 820; width: min(88vw, 290px);
+      opacity: 0; transition: transform 0.6s ease, opacity 0.45s ease;
+    }
+    .phone-frame.show { transform: translate(0, -50%); opacity: 1; }
+    .phone-shell {
+      padding: 10px; border-radius: 28px;
+      background: linear-gradient(180deg, #3a3a42, #1a1a22);
+      border: 1px solid var(--border);
+    }
+    .phone-screen {
+      border-radius: 20px; background: var(--bg);
+      overflow: hidden; border: 1px solid var(--border);
+    }
+    .phone-notch { height: 22px; display: flex; align-items: center; justify-content: center; }
+    .phone-notch span { width: 56px; height: 4px; background: rgba(255,255,255,0.15); border-radius: 2px; }
+    .push-card { margin: 20px 14px 24px; padding: 14px; }
+    .push-logo {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: var(--teal); color: var(--bg);
+      font-weight: 900; font-size: 12px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .btn-glow {
+      width: 100%; margin-top: 12px; padding: 11px;
+      border-radius: 12px; border: none;
+      background: var(--teal); color: var(--bg);
+      font-weight: 700; cursor: pointer;
+      animation: btn-pulse 2s ease-in-out infinite;
+    }
+    @keyframes btn-pulse {
+      50% { box-shadow: 0 0 22px rgba(0,212,170,0.55); }
+    }
+
+    .street-label {
+      padding: 6px 10px; font-size: 11px; font-weight: 600;
+      white-space: nowrap; border-radius: 8px;
+      background: rgba(10,10,15,0.92); border: 1px solid var(--border);
+      opacity: 0; transform: translateY(6px);
+      transition: opacity 0.45s ease, transform 0.45s ease;
+    }
+    .street-label.show { opacity: 1; transform: translateY(0); }
+    .street-label.green { color: var(--teal); border-color: rgba(0,212,170,0.35); }
+    .street-label.yellow { color: var(--amber); border-color: rgba(245,158,11,0.35); }
+    .street-label.red { color: #ff8888; border-color: rgba(255,68,68,0.35); }
+
+    .ai-card {
+      position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
+      z-index: 800; width: min(92vw, 400px); padding: 12px 16px;
+      opacity: 0; transition: opacity 0.5s ease;
+    }
+    .ai-card.show { opacity: 1; }
+
+    .wallet-card {
+      position: fixed; top: 50%; left: 50%;
+      transform: translate(-50%, -50%) scale(0.88);
+      z-index: 950; width: min(92vw, 320px);
+      opacity: 0; transition: transform 0.55s ease, opacity 0.45s ease;
+    }
+    .wallet-card.show { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    .wallet-inner { padding: 24px; text-align: center; border: 2px solid rgba(0,212,170,0.25); }
+    .wallet-counter { font-size: 40px; font-weight: 900; color: var(--teal); }
+
+    #fade-overlay {
+      position: fixed; inset: 0; background: var(--bg);
+      opacity: 0; transition: opacity 1s ease;
+      pointer-events: none; z-index: 900;
+    }
+    #fade-overlay.show { opacity: 0.94; }
+    #end-screen {
+      position: fixed; inset: 0; z-index: 1000;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      text-align: center; padding: 24px;
+      opacity: 0; transition: opacity 0.9s ease;
+      pointer-events: none;
+    }
+    #end-screen.show { opacity: 1; }
+    #end-screen h1 { font-size: clamp(56px, 12vw, 80px); font-weight: 900; color: var(--teal); }
+    #end-screen .tag { font-size: 20px; font-weight: 700; margin-top: 16px; }
+    #end-screen .mid { color: var(--text-muted); margin-top: 12px; }
+    #end-screen .small { font-size: 13px; color: rgba(255,255,255,0.4); margin-top: 20px; max-width: 360px; }
+
+    .restart-btn {
+      position: fixed; top: 16px; right: 16px; z-index: 2000;
+      padding: 10px 16px; font-size: 13px; font-weight: 600;
+      color: #fff; background: var(--glass);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      border-radius: 10px; cursor: pointer;
+    }
+    .demo-badge {
+      position: fixed; bottom: 12px; left: 12px; z-index: 2000;
+      font-size: 9px; font-weight: 700; letter-spacing: 0.12em;
+      text-transform: uppercase; color: rgba(255,255,255,0.28);
+    }
+    #vignette {
+      position: fixed; inset: 0; pointer-events: none; z-index: 400;
+      background: radial-gradient(ellipse at center, transparent 35%, rgba(0,0,0,0.45) 100%);
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <div id="vignette"></div>
+  <div id="fade-overlay"></div>
+
+  <div class="demo-badge">Demo mode</div>
+  <button type="button" class="restart-btn" onclick="location.reload()">▶ Restart</button>
+
+  <div id="problem-card" class="card-bottom glass">
+    <p style="font-weight:700;font-size:16px">🔴 Split 3 — Sunday, 20:15</p>
+    <p style="font-size:14px;color:var(--text-muted);margin-top:8px">Driver has been circling for 38 minutes.</p>
+  </div>
+
+  <div id="toast" class="toast glass">
+    <p class="toast-line1" id="t1"></p>
+    <p class="toast-line2" id="t2"></p>
+    <p class="countdown hidden" id="countdown"></p>
+  </div>
+
+  <div id="phone-frame" class="phone-frame">
+    <div class="phone-shell">
+      <div class="phone-screen">
+        <div class="phone-notch"><span></span></div>
+        <div class="push-card glass">
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <div class="push-logo">Ae!</div>
+            <div>
+              <p style="font-size:10px;color:var(--text-muted);font-weight:600">AE!</p>
+              <p style="font-weight:700;font-size:13px;margin-top:2px">Free spot 180m from you! 🎯</p>
+              <p style="font-size:11px;color:var(--text-muted);margin-top:4px">Ul. Matice Hrvatske • ~2 min walk</p>
+            </div>
+          </div>
+          <button type="button" class="btn-glow">Navigate →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="ai-card" class="ai-card glass">
+    <p style="font-size:12px;text-align:center;color:var(--text-muted)">
+      Ae! AI — <span style="color:var(--teal);font-weight:700">2,847</span> trips analyzed in Split 3
+    </p>
+  </div>
+
+  <div id="wallet" class="wallet-card">
+    <div class="glass wallet-inner">
+      <p style="color:var(--teal);font-weight:700;font-size:17px">💰 Split-Polza</p>
+      <p class="wallet-counter" id="wallet-counter">0</p>
+      <p style="font-size:12px;color:var(--text-muted);margin-top:4px">bodova</p>
+      <hr style="border:none;border-top:1px solid var(--border);margin:16px 0" />
+      <p style="font-size:13px">☕ Kava • Kafić Žnjan</p>
+      <p style="font-size:13px;margin-top:6px">🚌 Promet karta</p>
+      <button type="button" style="margin-top:14px;padding:10px 20px;border-radius:10px;border:1px solid rgba(0,212,170,0.4);background:rgba(0,212,170,0.1);color:var(--teal);font-weight:700;cursor:pointer">Iskoristi →</button>
+    </div>
+  </div>
+
+  <div id="end-screen">
+    <h1>Ae!</h1>
+    <p class="tag">Splitska solidarnost na djelu.</p>
+    <p class="mid">Parking · Pazar · Plaže · Eventi</p>
+    <p class="small">Nula klikova. Nula betona. Samo dišpet i AI.</p>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script>
+  function playDing() {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      [523, 659].forEach(function (freq, i) {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.frequency.value = freq; osc.type = 'sine';
+        gain.gain.setValueAtTime(0.3, ctx.currentTime + i * 0.15);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.15 + 0.8);
+        osc.start(ctx.currentTime + i * 0.15);
+        osc.stop(ctx.currentTime + i * 0.15 + 0.8);
+      });
+    } catch (e) {}
+  }
+
+  const PARKING = [
+    [43.5128, 16.4821], [43.5135, 16.4831], [43.5140, 16.4818],
+    [43.5125, 16.4840], [43.5142, 16.4845], [43.5118, 16.4825], [43.5131, 16.4855]
+  ];
+  const FREE = 2;
+  const SEEKER = [43.5152, 16.4812];
+  const LOOP = [
+    [43.5122, 16.4815], [43.5122, 16.4850],
+    [43.5145, 16.4850], [43.5145, 16.4815], [43.5122, 16.4815]
+  ];
+  const STREETS = [
+    { lat: 43.5138, lng: 16.4825, text: 'Matice Hrvatske: 92% ✅', cls: 'green' },
+    { lat: 43.5126, lng: 16.4838, text: 'Domovinskog rata: 34% 🟡', cls: 'yellow' },
+    { lat: 43.5134, lng: 16.4852, text: 'Šoltanska: 11% 🔴', cls: 'red' }
+  ];
+
+  let map, pins = [], streets = [], glow, loopCar, departCar, seeker, routeLine;
+  let loopId, seekerId, animId;
+
+  const $ = function (id) { return document.getElementById(id); };
+  const delay = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
+
+  function lock(m) {
+    m.dragging.disable(); m.touchZoom.disable(); m.doubleClickZoom.disable();
+    m.scrollWheelZoom.disable(); m.boxZoom.disable(); m.keyboard.disable();
+    if (m.tap) m.tap.disable();
+  }
+
+  function redPin() {
+    return L.divIcon({ className: 'pin-wrap', html: '<div class="pin-red"></div>', iconSize: [18,18], iconAnchor: [9,9] });
+  }
+  function greenPin() {
+    return L.divIcon({
+      className: 'pin-wrap',
+      html: '<div class="pin-green-wrap"><div class="ripple"></div><div class="ripple r2"></div><div class="ripple r3"></div><div class="pin-green">✅</div></div>',
+      iconSize: [22,22], iconAnchor: [11,11]
+    });
+  }
+  function carPin() {
+    return L.divIcon({ className: 'car-wrap', html: '<div class="car-icon">🚗</div>', iconSize: [24,24], iconAnchor: [12,12] });
+  }
+
+  function lerpPath(path, t) {
+    var segs = [], total = 0, i, d, target, frac;
+    for (i = 0; i < path.length - 1; i++) {
+      d = Math.hypot(path[i+1][0]-path[i][0], path[i+1][1]-path[i][1]);
+      segs.push(d); total += d;
+    }
+    target = (t % 1) * total;
+    for (i = 0; i < segs.length; i++) {
+      if (target <= segs[i]) {
+        frac = segs[i] ? target / segs[i] : 0;
+        return [path[i][0]+(path[i+1][0]-path[i][0])*frac, path[i][1]+(path[i+1][1]-path[i][1])*frac];
+      }
+      target -= segs[i];
+    }
+    return path[path.length-1];
+  }
+
+  function bearing(a, b) {
+    return Math.atan2(b[1]-a[1], b[0]-a[0]) * 180 / Math.PI;
+  }
+
+  function startLoop() {
+    var t0 = performance.now();
+    function tick(now) {
+      var t = ((now - t0) % 14000) / 14000;
+      var pos = lerpPath(LOOP, t);
+      var ahead = lerpPath(LOOP, (t + 0.008) % 1);
+      loopCar.setLatLng(pos);
+      var el = loopCar.getElement();
+      if (el) {
+        var c = el.querySelector('.car-icon');
+        if (c) c.style.transform = 'rotate(' + bearing(pos, ahead) + 'deg)';
+      }
+      loopId = requestAnimationFrame(tick);
+    }
+    loopId = requestAnimationFrame(tick);
+  }
+
+  function animateCounter(el, to, dur) {
+    var start = performance.now();
+    function tick(now) {
+      var p = Math.min(1, (now - start) / dur);
+      el.textContent = String(Math.round(to * p));
+      if (p < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }
+
+  async function run() {
+    var mapEl = $('map');
+    mapEl.classList.remove('visible','dimmed','blurred');
+    $('fade-overlay').classList.remove('show');
+    $('end-screen').classList.remove('show');
+    $('wallet').classList.remove('show');
+    $('ai-card').classList.remove('show');
+    $('phone-frame').classList.remove('show');
+    $('toast').classList.remove('show');
+    $('problem-card').classList.remove('show','hide');
+    $('countdown').classList.add('hidden');
+
+    pins.forEach(function (p) { map.removeLayer(p); }); pins = [];
+    streets.forEach(function (s) { map.removeLayer(s); }); streets = [];
+    if (glow) { map.removeLayer(glow); glow = null; }
+    if (loopCar) { map.removeLayer(loopCar); loopCar = null; }
+    if (departCar) { map.removeLayer(departCar); departCar = null; }
+    if (seeker) { map.removeLayer(seeker); seeker = null; }
+    if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
+    if (loopId) cancelAnimationFrame(loopId);
+    if (seekerId) cancelAnimationFrame(seekerId);
+
+    map.setView([43.5133, 16.4827], 16);
+
+    /* Phase 1: 0–8s */
+    await delay(200);
+    mapEl.classList.add('visible');
+    var i;
+    for (i = 0; i < PARKING.length; i++) {
+      await delay(200);
+      var m = L.marker(PARKING[i], { icon: redPin(), interactive: false }).addTo(map);
+      pins.push(m);
+    }
+    loopCar = L.marker(LOOP[0], { icon: carPin(), interactive: false, zIndexOffset: 600 }).addTo(map);
+    startLoop();
+    await delay(500);
+    $('problem-card').classList.add('show');
+    await delay(7300);
+    $('problem-card').classList.add('hide');
+
+    /* Phase 2: 8–18s */
+    await delay(600);
+    if (loopId) cancelAnimationFrame(loopId);
+    if (loopCar) { map.removeLayer(loopCar); loopCar = null; }
+    var spot = PARKING[FREE];
+    glow = L.marker(spot, {
+      icon: L.divIcon({ className: 'glow-wrap', html: '<div class="pin-glow"></div>', iconSize: [30,30], iconAnchor: [15,15] }),
+      interactive: false, zIndexOffset: 300
+    }).addTo(map);
+    departCar = L.marker(spot, { icon: carPin(), interactive: false, zIndexOffset: 700 }).addTo(map);
+    $('toast').style.background = 'var(--blue)';
+    $('t1').textContent = '🔵 Ae! detektirao: Bluetooth auta spojen 🚗';
+    $('t2').textContent = 'Automatsko oslobađanje za:';
+    $('countdown').classList.remove('hidden');
+    $('toast').classList.add('show');
+    for (i = 5; i >= 1; i--) {
+      var cd = $('countdown');
+      cd.textContent = String(i);
+      cd.classList.remove('flip'); void cd.offsetWidth; cd.classList.add('flip');
+      await delay(1000);
+    }
+    $('countdown').classList.add('hidden');
+
+    /* Phase 3: 18–28s */
+    if (glow) { map.removeLayer(glow); glow = null; }
+    map.removeLayer(pins[FREE]);
+    pins[FREE] = L.marker(spot, { icon: greenPin(), interactive: false }).addTo(map);
+    playDing();
+    $('toast').style.background = 'rgba(0,100,80,0.92)';
+    $('t1').textContent = '✅ Misto slobodno!';
+    $('t2').textContent = 'Ul. Matice Hrvatske 14 — +10 Split-Polza bodova zarađeno 💰';
+    var away = [spot[0]+0.0045, spot[1]-0.007];
+  var t0 = performance.now();
+    (function driveAway(now) {
+      var p = Math.min(1, (now - t0) / 3000);
+      departCar.setLatLng([spot[0]+(away[0]-spot[0])*p, spot[1]+(away[1]-spot[1])*p]);
+      if (p < 1) requestAnimationFrame(driveAway);
+      else { map.removeLayer(departCar); departCar = null; }
+    })(performance.now());
+    await delay(9000);
+    $('toast').classList.remove('show');
+
+    /* Phase 4: 28–40s */
+    $('phone-frame').classList.add('show');
+    seeker = L.marker(SEEKER, {
+      icon: L.divIcon({ className: 'seeker-wrap', html: '<div class="seeker-dot"></div>', iconSize: [14,14], iconAnchor: [7,7] }),
+      interactive: false, zIndexOffset: 400
+    }).addTo(map);
+    var route = [], j;
+    for (j = 0; j <= 24; j++) {
+      var f = j / 24;
+      route.push([SEEKER[0]+(spot[0]-SEEKER[0])*f, SEEKER[1]+(spot[1]-SEEKER[1])*f]);
+    }
+    routeLine = L.polyline([route[0]], { color: '#3B82F6', weight: 3, dashArray: '8,10' }).addTo(map);
+    var drawStart = performance.now();
+    (function drawRoute(now) {
+      var p = Math.min(1, (now - drawStart) / 2200);
+      routeLine.setLatLngs(route.slice(0, Math.max(2, Math.floor(p * route.length))));
+      if (p < 1) requestAnimationFrame(drawRoute);
+      else {
+        var t = 0;
+        (function moveSeeker() {
+          t = Math.min(1, t + 0.003);
+          seeker.setLatLng(route[Math.floor(t * (route.length - 1))]);
+          if (t < 1) seekerId = requestAnimationFrame(moveSeeker);
+        })();
+      }
+    })(performance.now());
+    await delay(11500);
+    $('phone-frame').classList.remove('show');
+    if (seekerId) cancelAnimationFrame(seekerId);
+
+    /* Phase 5: 40–48s */
+    STREETS.forEach(function (s, idx) {
+      var sm = L.marker([s.lat, s.lng], {
+        icon: L.divIcon({
+          className: 'street-wrap',
+          html: '<div class="street-label ' + s.cls + '" id="sl-' + idx + '">' + s.text + '</div>',
+          iconSize: [1,1], iconAnchor: [0,0]
+        }),
+        interactive: false
+      }).addTo(map);
+      streets.push(sm);
+      setTimeout(function () {
+        var el = document.getElementById('sl-' + idx);
+        if (el) el.classList.add('show');
+      }, 250 + idx * 320);
+    });
+    await delay(400);
+    $('ai-card').classList.add('show');
+    await delay(7200);
+    $('ai-card').classList.remove('show');
+
+    /* Phase 6: 48–56s */
+    mapEl.classList.add('dimmed', 'blurred');
+    await delay(400);
+    $('wallet').classList.add('show');
+    $('wallet-counter').textContent = '0';
+    playDing();
+    animateCounter($('wallet-counter'), 10, 1200);
+    await delay(7600);
+    $('wallet').classList.remove('show');
+    mapEl.classList.remove('dimmed', 'blurred');
+
+    /* Phase 7: 56–60s */
+    $('fade-overlay').classList.add('show');
+    await delay(700);
+    $('end-screen').classList.add('show');
+  }
+
+  map = L.map('map', { center: [43.5133, 16.4827], zoom: 16, zoomControl: false, attributionControl: true });
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '© OpenStreetMap contributors © CARTO',
+    subdomains: 'abcd', maxZoom: 20
+  }).addTo(map);
+  lock(map);
+  run();
+  </script>
+</body>
+</html>
