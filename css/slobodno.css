@@ -183,6 +183,26 @@ a:hover {
   color: var(--teal);
 }
 
+.mode-tabs-scroll {
+  display: flex;
+  overflow-x: auto;
+  gap: 6px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.mode-tabs-scroll .mode-tab {
+  flex: 0 0 auto;
+  min-width: max-content;
+  padding: 10px 12px;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.mode-tabs-scroll::-webkit-scrollbar {
+  display: none;
+}
+
 /* Panel */
 .panel {
   padding: 12px 16px calc(16px + var(--safe-bottom));
@@ -399,7 +419,17 @@ a:hover {
   text-decoration: none;
 }
 
-/* Map pins */
+/* Map pins — skaliraju se s zoomom (JS postavlja iconSize) */
+.map-pin-scaled .pin-leaving,
+.map-pin-scaled .pin-open,
+.map-pin-scaled .pin-temp,
+.map-pin-scaled .user-pin,
+.map-pin-scaled .event-pin {
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+}
+
 .pin-leaving {
   width: 20px;
   height: 20px;
@@ -416,6 +446,416 @@ a:hover {
   background: var(--blue);
   border: 2px solid #fff;
   border-radius: 50%;
+}
+
+.user-pin {
+  width: 14px;
+  height: 14px;
+  background: var(--blue);
+  border: 3px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.85);
+}
+
+/* LIVE event gužva */
+.event-live {
+  position: absolute;
+  top: max(12px, env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%) translateY(-120%);
+  z-index: 450;
+  width: min(94vw, 520px);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(15, 20, 19, 0.94);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(12px);
+  font-size: clamp(0.68rem, 2.2vw, 0.8rem);
+  color: var(--text);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  transition: transform 0.45s ease, opacity 0.35s ease;
+  pointer-events: none;
+}
+
+.event-live.show {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+
+.event-live-dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: event-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes event-pulse {
+  50% {
+    opacity: 0.35;
+    transform: scale(1.35);
+  }
+}
+
+.event-live.crowd-high {
+  border-color: rgba(255, 68, 68, 0.5);
+  color: #ff8a8a;
+}
+
+.event-live.crowd-mid {
+  border-color: rgba(255, 193, 7, 0.45);
+  color: #ffd54f;
+}
+
+.event-live.crowd-low {
+  border-color: rgba(0, 212, 170, 0.4);
+  color: var(--teal);
+}
+
+.event-live-text strong {
+  color: #fff;
+  font-weight: 800;
+}
+
+/* Bura & Jugo live bar */
+.bura-live {
+  position: absolute;
+  top: max(52px, calc(env(safe-area-inset-top) + 44px));
+  left: 50%;
+  transform: translateX(-50%) translateY(-120%);
+  z-index: 448;
+  width: min(94vw, 520px);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: rgba(15, 20, 19, 0.94);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(12px);
+  font-size: clamp(0.68rem, 2.2vw, 0.8rem);
+  color: #93c5fd;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  transition: transform 0.45s ease, opacity 0.35s ease;
+  pointer-events: none;
+}
+
+.bura-live.show {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+
+.event-live.show ~ .bura-live.show {
+  top: max(96px, calc(env(safe-area-inset-top) + 88px));
+}
+
+.bura-live.alert-warn {
+  border-color: rgba(255, 193, 7, 0.45);
+  color: #ffd54f;
+}
+
+.bura-live.alert-danger {
+  border-color: rgba(255, 68, 68, 0.5);
+  color: #ff8a8a;
+}
+
+.bura-live-dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: event-pulse 1.2s ease-in-out infinite;
+}
+
+.bura-tagline {
+  font-style: italic;
+  color: var(--teal);
+}
+
+.bura-subhead {
+  margin: 14px 0 8px;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.bura-alerts {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.bura-alert {
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.bura-alert.bura-danger {
+  border-color: rgba(255, 68, 68, 0.45);
+  color: #ff8a8a;
+}
+
+.bura-alert.bura-warn {
+  border-color: rgba(255, 193, 7, 0.4);
+  color: #ffd54f;
+}
+
+.bura-zones {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.bura-zone {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.bura-zone strong {
+  font-size: 0.82rem;
+}
+
+.bura-zone-meta {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.bura-signal-good {
+  border-color: rgba(0, 212, 170, 0.4);
+}
+
+.bura-signal-good .bura-zone-meta {
+  color: var(--teal);
+}
+
+.bura-signal-weak .bura-zone-meta {
+  color: #ffd54f;
+}
+
+.bura-signal-none {
+  border-color: rgba(255, 68, 68, 0.35);
+  opacity: 0.85;
+}
+
+.bura-signal-none .bura-zone-meta {
+  color: #ff8a8a;
+}
+
+/* Nextbike GBFS pins */
+.nb-pin {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  min-height: 36px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  font-weight: 800;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+}
+
+.nb-pin .nb-bikes {
+  font-size: 0.75rem;
+  line-height: 1;
+}
+
+.nb-pin .nb-tag {
+  font-size: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.nb-surplus {
+  background: rgba(0, 212, 170, 0.92);
+  color: #0a0f0e;
+}
+
+.nb-deficit {
+  background: rgba(59, 130, 246, 0.92);
+  color: #fff;
+}
+
+.nb-normal {
+  background: rgba(120, 120, 120, 0.9);
+  color: #fff;
+}
+
+.nextbike-section-title {
+  margin: 10px 0 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--teal);
+}
+
+.nextbike-meta {
+  font-size: 0.68rem;
+}
+
+.nb-item-surplus {
+  border-color: rgba(0, 212, 170, 0.35);
+}
+
+.nb-item-deficit {
+  border-color: rgba(59, 130, 246, 0.35);
+}
+
+.event-pin {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 4px 6px;
+  border-radius: 10px;
+  border: 2px solid #fff;
+  text-align: center;
+  line-height: 1.1;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+.event-pin-pct {
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.event-pin-name {
+  font-size: 0.55rem;
+  font-weight: 600;
+  opacity: 0.9;
+  max-width: 72px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.event-pin.crowd-high {
+  background: rgba(255, 68, 68, 0.92);
+  color: #fff;
+}
+
+.event-pin.crowd-mid {
+  background: rgba(255, 193, 7, 0.9);
+  color: #1a1200;
+}
+
+.event-pin.crowd-low {
+  background: rgba(0, 212, 170, 0.88);
+  color: #0a0f0e;
+}
+
+/* QR novčanik */
+.voucher-wallet {
+  display: grid;
+  gap: 10px;
+  max-height: min(32vh, 280px);
+  overflow-y: auto;
+}
+
+.voucher-empty[hidden] {
+  display: none !important;
+}
+
+.voucher-card {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(0, 212, 170, 0.25);
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.voucher-card:hover {
+  background: rgba(0, 212, 170, 0.08);
+  border-color: rgba(0, 212, 170, 0.45);
+}
+
+.voucher-card-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 8px;
+}
+
+.voucher-card-head strong {
+  font-size: 0.82rem;
+}
+
+.voucher-code {
+  font-size: 0.68rem;
+  color: var(--teal);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.voucher-qr-mini {
+  display: flex;
+  justify-content: center;
+  padding: 6px;
+  background: #00d4aa;
+  border-radius: 8px;
+}
+
+.voucher-qr-mini img,
+.voucher-qr-mini canvas {
+  display: block;
+  width: 72px !important;
+  height: 72px !important;
+}
+
+.voucher-expiry {
+  margin: 6px 0 0;
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+
+.voucher-qr-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.voucher-qr-code {
+  margin: 4px 0 0;
+  font-size: 0.78rem;
+  color: var(--teal);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.qr-card-voucher {
+  width: min(92vw, 320px);
+}
+
+#voucher-qr-canvas {
+  border-radius: 12px;
+  overflow: hidden;
+  padding: 10px;
+  background: #00d4aa;
+}
+
+#voucher-qr-canvas img,
+#voucher-qr-canvas canvas {
+  display: block;
+  border-radius: 6px;
 }
 
 @keyframes pulse-teal {
@@ -504,6 +944,11 @@ a:hover {
 
   .rewards {
     grid-template-columns: 1fr;
+  }
+
+  .app-sidebar {
+    display: flex;
+    flex-direction: column;
   }
 }
 

@@ -45,6 +45,22 @@
       background: transparent !important;
       border: none !important;
     }
+    .map-pin-scaled .pin-red,
+    .map-pin-scaled .pin-green,
+    .map-pin-scaled .ripple-wrap,
+    .map-pin-scaled .seeker-dot,
+    .map-pin-scaled .car-icon {
+      width: 100%;
+      height: 100%;
+      box-sizing: border-box;
+    }
+    .map-pin-scaled .ripple-wrap { position: relative; }
+    .map-pin-scaled .car-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 100%;
+    }
 
     .pin-red {
       width: 18px; height: 18px;
@@ -399,10 +415,30 @@
     #end-screen > h1 { font-size: clamp(2.5rem, 10vw, 4.5rem) !important; }
     #end-screen > p  { font-size: clamp(0.78rem, 2.5vw, 1.25rem) !important; }
     .end-actions { margin-top: clamp(12px, 3vh, 32px); }
+
+    .event-live-demo {
+      position: fixed;
+      top: clamp(10px, 2.5vh, 20px);
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 820;
+      width: min(94vw, 480px);
+      padding: 10px 14px;
+      border-radius: 12px;
+      background: rgba(15,15,15,0.9);
+      border: 1px solid rgba(255,68,68,0.45);
+      color: #ff8a8a;
+      font-size: clamp(0.68rem, 2.2vw, 0.82rem);
+      text-align: center;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+    }
+    .event-live-demo strong { color: #fff; }
   </style>
 </head>
 <body>
   <div id="map"></div>
+  <div id="event-live-demo" class="event-live-demo" hidden></div>
   <div id="vignette"></div>
   <div id="fade-overlay"></div>
 
@@ -496,8 +532,9 @@
       <p class="text-white font-extrabold text-3xl mt-2" id="wallet-points">Tvoji bodovi: 10</p>
       <div class="border-t border-white/10 my-4"></div>
       <p class="text-white/80 font-semibold text-sm">🎁 Zamijeni za:</p>
-      <p class="text-white text-sm mt-2">☕ Kava u Kafiću Žnjan</p>
-      <p class="text-white text-sm mt-1">🚌 Promet karta</p>
+      <p class="text-white text-sm mt-2">☕ Kava · 🚌 Promet karta</p>
+      <p class="text-white text-sm mt-1">🍕 Pizza · 🎬 Kino · 🍦 Sladoled</p>
+      <p class="text-white/70 text-xs mt-1">QR kuponi u Slobodno Misto aplikaciji</p>
       <button type="button" class="mt-4 px-6 py-2 rounded-xl bg-white/10 text-[#00D4AA] font-bold text-sm border border-[#00D4AA]/30">
         Iskoristi → <span class="text-lg">▣</span>
       </button>
@@ -559,6 +596,49 @@
 
   function $(id) { return document.getElementById(id); }
   function isAborted(runId) { return runId !== demoRunId; }
+
+  function pinScale() {
+    if (!map) return 1;
+    return Math.max(0.72, Math.min(1.38, 0.52 + map.getZoom() * 0.055));
+  }
+  function scaledPinSize(base) {
+    var s = Math.round(base * pinScale());
+    return [s, s];
+  }
+  function pinAnchor(size) {
+    return [Math.round(size[0] / 2), Math.round(size[1] / 2)];
+  }
+  function refreshDemoMarkerScales() {
+    pinMarkers.forEach(function (m, i) {
+      var base = i === FREE_SPOT_INDEX ? 22 : 18;
+      var html = i === FREE_SPOT_INDEX
+        ? '<div class="ripple-wrap"><div class="ripple wave1"></div><div class="ripple wave2"></div><div class="ripple wave3"></div><div class="pin-green">✅</div></div>'
+        : '<div class="pin-red"></div>';
+      var size = scaledPinSize(base);
+      m.setIcon(L.divIcon({ className: 'pin-wrap map-pin-scaled', html: html, iconSize: size, iconAnchor: pinAnchor(size) }));
+    });
+    if (seekerMarker) {
+      var ss = scaledPinSize(14);
+      seekerMarker.setIcon(L.divIcon({ className: 'seeker-wrap map-pin-scaled', html: '<div class="seeker-dot"></div>', iconSize: ss, iconAnchor: pinAnchor(ss) }));
+    }
+    if (loopCarMarker) {
+      var cs = scaledPinSize(24);
+      loopCarMarker.setIcon(L.divIcon({ className: 'car-wrap map-pin-scaled', html: '<div class="car-icon">🚗</div>', iconSize: cs, iconAnchor: pinAnchor(cs) }));
+    }
+    if (departCarMarker) {
+      var ds = scaledPinSize(24);
+      departCarMarker.setIcon(L.divIcon({ className: 'car-wrap map-pin-scaled', html: '<div class="car-icon">🚗</div>', iconSize: ds, iconAnchor: pinAnchor(ds) }));
+    }
+  }
+
+  var demoEventCrowd = 72;
+  function updateDemoEventBar() {
+    var bar = $('event-live-demo');
+    if (!bar) return;
+    demoEventCrowd = Math.max(55, Math.min(96, demoEventCrowd + Math.floor(Math.random() * 9) - 3));
+    bar.hidden = false;
+    bar.innerHTML = '<strong>LIVE gužva</strong> · NK Hajduk @ Poljud — ' + demoEventCrowd + '% · jaka gužva';
+  }
 
   function delay(ms) {
     return new Promise(function (resolve) {
@@ -623,6 +703,8 @@
     $('points-badge').classList.remove('show');
     $('toast').style.background = '';
     $('toast-countdown').classList.add('hidden');
+    var eventBarReset = $('event-live-demo');
+    if (eventBarReset) eventBarReset.hidden = true;
 
     detachMapBadgeHandlers();
     pinMarkers.forEach(function (m) { map.removeLayer(m); });
@@ -725,7 +807,7 @@
 
   function createRedPin(latlng) {
     return L.marker(latlng, {
-      icon: L.divIcon({ className: 'pin-wrap', html: '<div class="pin-red"></div>', iconSize: [18, 18], iconAnchor: [9, 9] }),
+      icon: L.divIcon({ className: 'pin-wrap map-pin-scaled', html: '<div class="pin-red"></div>', iconSize: scaledPinSize(18), iconAnchor: pinAnchor(scaledPinSize(18)) }),
       interactive: false
     });
   }
@@ -735,14 +817,14 @@
       '<div class="ripple wave1"></div><div class="ripple wave2"></div><div class="ripple wave3"></div>' +
       '<div class="pin-green">✅</div></div>';
     return L.marker(latlng, {
-      icon: L.divIcon({ className: 'pin-wrap', html: html, iconSize: [22, 22], iconAnchor: [11, 11] }),
+      icon: L.divIcon({ className: 'pin-wrap map-pin-scaled', html: html, iconSize: scaledPinSize(22), iconAnchor: pinAnchor(scaledPinSize(22)) }),
       interactive: false
     });
   }
 
   function createCarMarker(latlng, zIndex) {
     return L.marker(latlng, {
-      icon: L.divIcon({ className: 'car-wrap', html: '<div class="car-icon">🚗</div>', iconSize: [24, 24], iconAnchor: [12, 12] }),
+      icon: L.divIcon({ className: 'car-wrap map-pin-scaled', html: '<div class="car-icon">🚗</div>', iconSize: scaledPinSize(24), iconAnchor: pinAnchor(scaledPinSize(24)) }),
       interactive: false,
       zIndexOffset: zIndex || 500
     });
@@ -979,7 +1061,7 @@
     $('phone-frame').classList.add('show');
 
     seekerMarker = L.marker(SEEKER_START, {
-      icon: L.divIcon({ className: 'seeker-wrap', html: '<div class="seeker-dot"></div>', iconSize: [14, 14], iconAnchor: [7, 7] }),
+      icon: L.divIcon({ className: 'seeker-wrap map-pin-scaled', html: '<div class="seeker-dot"></div>', iconSize: scaledPinSize(14), iconAnchor: pinAnchor(scaledPinSize(14)) }),
       interactive: false,
       zIndexOffset: 400
     }).addTo(map);
@@ -999,7 +1081,9 @@
     $('phone-frame').classList.remove('show');
     if (seekerAnimId) cancelAnimationFrame(seekerAnimId);
 
-    // PHASE 5 — AI Layer (40–48s)
+    // PHASE 5 — AI Layer + LIVE event gužva (40–48s)
+    updateDemoEventBar();
+    var eventBarTimer = setInterval(updateDemoEventBar, 4200);
     STREET_LABELS.forEach(function (s, i) {
       const m = L.marker([s.lat, s.lng], {
         icon: L.divIcon({
@@ -1025,6 +1109,9 @@
     await delay(7500);
     if (isAborted(runId)) return;
     $('ai-card').style.opacity = '0';
+    clearInterval(eventBarTimer);
+    var eventBar = $('event-live-demo');
+    if (eventBar) eventBar.hidden = true;
     streetMarkers.forEach(function (m) {
       const el = m.getElement();
       if (el) {
@@ -1073,6 +1160,7 @@
     }).addTo(map);
 
     disableMapInteraction();
+    map.on('zoomend', refreshDemoMarkerScales);
 
     function fitMap() { if (map) map.invalidateSize(); }
     setTimeout(fitMap, 100);
