@@ -3,13 +3,18 @@
 
   var SPLIT_CENTER = [43.5133, 16.4827];
   var CLAIM_COST = 15;
+  var LEAVE_REWARD = 10;
+  var REPORT_REWARD = 5;
   var LEAVE_SECONDS = 300;
+  var OPEN_SPOT_SECONDS = 300;
+  var START_POINTS = 8;
+  var STORAGE_KEY = 'slobodno-misto-v1';
   var isHr = document.documentElement.lang === 'hr';
 
   var state = {
-    user: null,
-    points: 0,
+    points: START_POINTS,
     myLeaveId: null,
+    myOpenId: null,
     leaveTimer: null,
     leaveInterval: null,
     spots: [],
@@ -21,36 +26,35 @@
 
   function t(hr, en) { return isHr ? hr : en; }
 
+  function loadState() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      var saved = JSON.parse(raw);
+      if (typeof saved.points === 'number') state.points = saved.points;
+      if (Array.isArray(saved.spots)) {
+        state.spots = saved.spots.filter(function (s) {
+          return s.expiresAt > Date.now();
+        });
+      }
+    } catch (e) { /* ignore */ }
+  }
+
+  function saveState() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        points: state.points,
+        spots: state.spots
+      }));
+    } catch (e) { /* ignore */ }
+  }
+
   function showToast(msg, type) {
     var toast = $('toast');
     toast.textContent = msg;
     toast.className = 'toast show' + (type ? ' ' + type : '');
     clearTimeout(showToast._t);
     showToast._t = setTimeout(function () { toast.classList.remove('show'); }, 3200);
-  }
-
-  function requireAuth() {
-    if (!state.user) {
-      location.href = 'login.html?next=' + encodeURIComponent('main.html');
-      return false;
-    }
-    return true;
-  }
-
-  function updateAuthUI() {
-    var bar = $('auth-bar');
-    if (!bar) return;
-    if (state.user) {
-      $('auth-guest').hidden = true;
-      $('auth-user').hidden = false;
-      $('user-name').textContent = state.user.name;
-      if (state.user.role === 'admin') {
-        $('admin-link').hidden = false;
-      }
-    } else {
-      $('auth-guest').hidden = false;
-      $('auth-user').hidden = true;
-    }
   }
 
   function updatePointsUI(animate) {
@@ -68,45 +72,24 @@
       var hint = btn.parentElement.querySelector('.reward-need');
       if (hint) {
         hint.textContent = locked
-          ? t(' još ' + (cost - state.points) + ' Polza', ' need ' + (cost - state.points) + ' more Polza')
+          ? t(' još ' + (cost - state.points) + ' Gušti', ' need ' + (cost - state.points) + ' more Gušti')
           : '';
       }
     });
+    saveState();
   }
 
-  async function refreshUser() {
-    try {
-      var data = await SlobodnoApi.me();
-      state.user = data.user;
-      state.points = data.user.points;
-      updateAuthUI();
-      updatePointsUI(false);
-    } catch (e) {
-      state.user = null;
-      updateAuthUI();
-    }
+  function addPoints(n, reason) {
+    state.points += n;
+    updatePointsUI(true);
+    if (reason) showToast(reason, 'success');
   }
 
-  async function loadSpots() {
-    try {
-      var data = await SlobodnoApi.getSpots();
-      state.spots = data.spots.map(function (s) {
-        return {
-          id: s.id,
-          type: s.type,
-          latlng: s.latlng,
-          street: s.street,
-          expiresAt: s.expiresAt,
-          claimed: s.claimed,
-          claimedByMe: s.claimedBy === (state.user && state.user.id),
-          userId: s.userId
-        };
-      });
-      syncMarkers();
-      renderSpotList();
-    } catch (e) {
-      showToast(t('Karta nije dostupna — pokreni vercel dev.', 'Map unavailable — run vercel dev.'), 'error');
-    }
+  function spendPoints(n) {
+    if (state.points < n) return false;
+    state.points -= n;
+    updatePointsUI(true);
+    return true;
   }
 
   function createSpotMarker(spot) {
@@ -144,6 +127,7 @@
     Object.keys(spotMarkers).forEach(function (id) {
       if (!ids[id]) removeSpotMarker(id);
     });
+    renderSpotList();
   }
 
   function formatDistance(spot) {
@@ -165,7 +149,7 @@
     var list = $('spot-list');
     var noSpots = $('no-spots');
     var active = state.spots.filter(function (s) {
-      return s.expiresAt > Date.now() && s.id !== state.myLeaveId && s.userId !== (state.user && state.user.id);
+      return s.expiresAt > Date.now() && s.id !== state.myLeaveId;
     });
     list.innerHTML = '';
     noSpots.style.display = active.length ? 'none' : 'block';
@@ -201,8 +185,7 @@
 
   function setMarkMode(on) {
     state.markMode = on;
-    var mapEl = $('map');
-    mapEl.classList.toggle('map-mark-mode', on);
+    $('map').classList.toggle('map-mark-mode', on);
     $('btn-map-mark').classList.toggle('active', on);
     $('map-hint').hidden = !on;
     if (!on && tempMarker) {
@@ -223,65 +206,87 @@
     }).addTo(map);
   }
 
-  async function postSpotAt(latlng, type, durationSec) {
-    if (!requireAuth()) return;
-    try {
-      var res = await SlobodnoApi.createSpot({
-        lat: latlng.lat,
-        lng: latlng.lng,
-        type: type,
-        durationSec: durationSec,
-        street: isHr ? 'Split (označeno na karti)' : 'Split (marked on map)'
-      });
-      state.points = res.points;
-      updatePointsUI(true);
-      if (type === 'leaving') state.myLeaveId = res.spot.id;
-      await loadSpots();
-      showToast(
-        t('+' + res.reward + ' Polza — misto na karti!', '+' + res.reward + ' Polza — spot on map!'),
-        'success'
-      );
-    } catch (ex) {
-      showToast(ex.message, 'error');
-    }
-    setMarkMode(false);
+  function addSpotAt(latlng, type) {
+    var durationMs = type === 'leaving'
+      ? LEAVE_SECONDS * 1000
+      : OPEN_SPOT_SECONDS * 1000;
+    var spot = {
+      id: 's-' + Date.now(),
+      type: type === 'leaving' ? 'leaving' : 'open',
+      latlng: [latlng.lat, latlng.lng],
+      street: isHr ? 'Split (označeno na karti)' : 'Split (marked on map)',
+      expiresAt: Date.now() + durationMs,
+      claimed: false,
+      claimedByMe: false
+    };
+    state.spots.push(spot);
+    if (type === 'leaving') state.myLeaveId = spot.id;
+    if (type !== 'leaving') state.myOpenId = spot.id;
+    syncMarkers();
+    saveState();
+    return spot;
   }
 
   function onMapClick(e) {
     if (!state.markMode) return;
-    if (!requireAuth()) return;
     showTempPin(e.latlng);
     var action = $('mark-action').value;
     if (action === 'open') {
-      postSpotAt(e.latlng, 'open', 480);
+      if (state.myOpenId) {
+        showToast(t('Već si prijavio slobodno misto — pričekaj da istekne (5 min).', 'You already reported a free spot — wait for it to expire (5 min).'), 'error');
+        setMarkMode(false);
+        return;
+      }
+      addSpotAt(e.latlng, 'open');
+      addPoints(REPORT_REWARD, t('Slobodno misto! +5 Gušti (pin 5 min).', 'Free spot! +5 Gušti (pin 5 min).'));
     } else if (action === 'leave') {
-      postSpotAt(e.latlng, 'leaving', LEAVE_SECONDS);
+      if (state.myLeaveId) {
+        showToast(t('Već si označio odlazak.', 'You already marked leaving.'), 'error');
+        setMarkMode(false);
+        return;
+      }
+      addSpotAt(e.latlng, 'leaving');
+      addPoints(LEAVE_REWARD, t('Odlazak označen! +10 Gušti.', 'Leave marked! +10 Gušti.'));
+      startLeaveCountdownUI();
     }
+    setMarkMode(false);
   }
 
-  async function claimSpot(id) {
-    if (!requireAuth()) return;
-    try {
-      var res = await SlobodnoApi.claimSpot(id);
-      state.points = res.points;
-      updatePointsUI(true);
-      await loadSpots();
-      highlightSpot(id);
-      showToast(t('Misto rezervirano!', 'Spot claimed!'), 'success');
-    } catch (ex) {
-      showToast(ex.message, 'error');
-    }
-  }
-
-  async function startLeaveCountdown() {
-    if (!requireAuth()) return;
-    if (state.myLeaveId) {
-      showToast(t('Već si označio odlazak.', 'You already marked leaving.'), 'error');
+  function claimSpot(id) {
+    var spot = state.spots.find(function (s) { return s.id === id; });
+    if (!spot || spot.claimed) return;
+    if (!spendPoints(CLAIM_COST)) {
+      showToast(t('Nedovoljno Gušti bodova.', 'Not enough Gušti points.'), 'error');
       return;
     }
-    setMarkMode(true);
-    $('mark-action').value = 'leave';
-    showToast(t('Klikni na kartu gdje parkiraš.', 'Click the map where you park.'), '');
+    spot.claimed = true;
+    spot.claimedByMe = true;
+    syncMarkers();
+    highlightSpot(id);
+    showToast(t('Misto rezervirano!', 'Spot claimed!'), 'success');
+    saveState();
+  }
+
+  function startLeaveCountdownUI() {
+    var cdEl = $('leave-countdown');
+    var cancelBtn = $('btn-cancel-leave');
+    var leaveBtn = $('btn-leave');
+    cdEl.hidden = false;
+    cancelBtn.hidden = false;
+    leaveBtn.disabled = true;
+
+    var remaining = LEAVE_SECONDS;
+    function tick() {
+      var min = Math.floor(remaining / 60);
+      var sec = remaining % 60;
+      cdEl.textContent = (isHr ? 'Odlazak za ' : 'Leaving in ') +
+        min + ':' + String(sec).padStart(2, '0');
+      if (remaining <= 0) finishLeave();
+      remaining--;
+    }
+    tick();
+    state.leaveInterval = setInterval(tick, 1000);
+    state.leaveTimer = setTimeout(finishLeave, LEAVE_SECONDS * 1000);
   }
 
   function finishLeave() {
@@ -289,16 +294,38 @@
     clearTimeout(state.leaveTimer);
     state.leaveInterval = null;
     state.leaveTimer = null;
-    state.myLeaveId = null;
+    if (state.myLeaveId) {
+      var spot = state.spots.find(function (s) { return s.id === state.myLeaveId; });
+      if (spot) {
+        spot.type = 'open';
+        spot.expiresAt = Date.now() + OPEN_SPOT_SECONDS * 1000;
+      }
+      state.myLeaveId = null;
+    }
     $('leave-countdown').hidden = true;
     $('btn-cancel-leave').hidden = true;
     $('btn-leave').disabled = false;
+    purgeExpired();
+    syncMarkers();
+    showToast(t('Misto slobodno na karti (još 5 min).', 'Spot free on map (5 min left).'), 'success');
+    saveState();
   }
 
   function cancelLeave() {
-    finishLeave();
+    if (state.myLeaveId) {
+      state.spots = state.spots.filter(function (s) { return s.id !== state.myLeaveId; });
+      removeSpotMarker(state.myLeaveId);
+      state.myLeaveId = null;
+    }
+    clearInterval(state.leaveInterval);
+    clearTimeout(state.leaveTimer);
+    $('leave-countdown').hidden = true;
+    $('btn-cancel-leave').hidden = true;
+    $('btn-leave').disabled = false;
     setMarkMode(false);
+    syncMarkers();
     showToast(t('Odlazak otkazan.', 'Leave cancelled.'), '');
+    saveState();
   }
 
   function setMode(mode) {
@@ -312,6 +339,21 @@
     if (mode === 'seek') renderSpotList();
   }
 
+  function purgeExpired() {
+    var before = state.spots.length;
+    state.spots = state.spots.filter(function (s) {
+      return s.expiresAt > Date.now();
+    });
+    // Clear myOpenId if that spot has expired
+    if (state.myOpenId && !state.spots.find(function (s) { return s.id === state.myOpenId; })) {
+      state.myOpenId = null;
+    }
+    if (state.spots.length !== before) {
+      syncMarkers();
+      saveState();
+    }
+  }
+
   function initMap() {
     map = L.map('map', { center: SPLIT_CENTER, zoom: 16, zoomControl: true });
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
@@ -323,7 +365,7 @@
       draggable: true,
       title: t('Tvoja pozicija', 'Your position')
     }).addTo(map);
-    myMarker.on('dragend', function () { renderSpotList(); });
+    myMarker.on('dragend', function () { renderSpotList(); saveState(); });
 
     map.on('click', onMapClick);
 
@@ -340,55 +382,60 @@
       );
     }
 
-    setTimeout(function () { map.invalidateSize(); }, 150);
-    window.addEventListener('resize', function () { if (map) map.invalidateSize(); });
+    function fitMap() {
+      if (map) map.invalidateSize();
+    }
+    setTimeout(fitMap, 100);
+    setTimeout(fitMap, 400);
+    window.addEventListener('resize', fitMap);
   }
 
-  async function init() {
+  function init() {
     initMap();
-    await refreshUser();
-    if (!state.user) {
-      location.href = 'login.html?next=main.html';
-      return;
-    }
-    await loadSpots();
+    loadState();
+    syncMarkers();
     updatePointsUI(false);
-    setInterval(loadSpots, 20000);
+    setInterval(purgeExpired, 10000);
   }
 
   document.querySelectorAll('.mode-tab').forEach(function (tab) {
     tab.addEventListener('click', function () { setMode(tab.getAttribute('data-mode')); });
   });
 
-  $('btn-leave').addEventListener('click', startLeaveCountdown);
+  $('btn-leave').addEventListener('click', function () {
+    if (state.myLeaveId) {
+      showToast(t('Već si označio odlazak.', 'You already marked leaving.'), 'error');
+      return;
+    }
+    setMarkMode(true);
+    $('mark-action').value = 'leave';
+    showToast(t('Klikni na kartu gdje parkiraš.', 'Click the map where you park.'), '');
+  });
+
   $('btn-cancel-leave').addEventListener('click', cancelLeave);
+
   $('btn-report').addEventListener('click', function () {
-    if (!requireAuth()) return;
     setMarkMode(true);
     $('mark-action').value = 'open';
-    showToast(t('Klikni na kartu — slobodno misto.', 'Click the map — free spot.'), '');
+    showToast(t('Klikni na kartu — pin traje 5 min.', 'Click the map — pin lasts 5 min.'), '');
   });
+
   $('btn-map-mark').addEventListener('click', function () {
     setMarkMode(!state.markMode);
   });
 
-  $('btn-logout').addEventListener('click', async function () {
-    await SlobodnoApi.logout();
-    location.href = 'login.html';
-  });
-
   document.querySelectorAll('.redeem-btn').forEach(function (btn) {
-    btn.addEventListener('click', async function () {
-      if (!requireAuth()) return;
+    btn.addEventListener('click', function () {
+      var cost = parseInt(btn.getAttribute('data-cost'), 10);
       var id = btn.getAttribute('data-id');
-      try {
-        var res = await SlobodnoApi.redeem(id);
-        state.points = res.points;
-        updatePointsUI(true);
-        showToast(res.reward + ' ✓', 'success');
-      } catch (ex) {
-        showToast(ex.message, 'error');
+      if (!spendPoints(cost)) {
+        showToast(t('Nedovoljno bodova.', 'Not enough points.'), 'error');
+        return;
       }
+      var msg = id === 'coffee'
+        ? t('Kava iskorištena! Pokaži app u kafiću.', 'Coffee redeemed! Show the app at the café.')
+        : t('Promet karta dodana u novčanik.', 'Bus pass added to wallet.');
+      showToast(msg, 'success');
     });
   });
 

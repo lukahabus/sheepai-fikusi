@@ -22,8 +22,10 @@
 }
 
 html {
+  width: 100%;
   height: 100%;
   height: 100dvh;
+  overflow: hidden;
 }
 
 html[lang='hr'] .t-en,
@@ -33,8 +35,11 @@ html[lang='en'] .t-hr {
 
 body {
   margin: 0;
+  width: 100%;
   min-height: 100%;
   min-height: 100dvh;
+  height: 100dvh;
+  overflow: hidden;
   font-family: var(--font);
   background: var(--bg);
   color: var(--text);
@@ -59,12 +64,12 @@ a:hover {
   text-decoration: underline;
 }
 
-/* Layout — puni ekran; uski stupac samo na mobitelu */
+/* Layout — cijeli viewport, karta ispod svega */
 .app-shell {
   display: flex;
   flex-direction: column;
-  width: 100%;
-  max-width: none;
+  width: 100vw;
+  max-width: 100%;
   margin: 0;
   min-height: 100dvh;
   height: 100dvh;
@@ -72,17 +77,22 @@ a:hover {
 }
 
 .app-body {
+  position: relative;
   flex: 1;
   min-height: 0;
-  display: flex;
-  flex-direction: column;
+  width: 100%;
+  overflow: hidden;
 }
 
 .app-sidebar {
-  flex-shrink: 0;
+  position: absolute;
+  z-index: 500;
   display: flex;
   flex-direction: column;
   background: var(--surface);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: -8px 0 32px rgba(0, 0, 0, 0.45);
 }
 
 .app-header {
@@ -135,9 +145,10 @@ a:hover {
 }
 
 #map {
-  flex: 1;
-  min-height: 0;
+  position: absolute;
+  inset: 0;
   width: 100%;
+  height: 100%;
   z-index: 1;
 }
 
@@ -434,10 +445,11 @@ a:hover {
   border-color: rgba(59, 130, 246, 0.5);
 }
 
-/* Desktop / tablet — karta lijevo, kontrole desno, cijeli viewport */
+/* Desktop — karta puna širina, panel desno preko karte */
 @media (min-width: 769px) {
   .app-header {
     padding: 14px 24px;
+    flex-shrink: 0;
   }
 
   .app-header h1 {
@@ -450,6 +462,7 @@ a:hover {
 
   .nav-bar {
     padding: 8px 24px;
+    flex-shrink: 0;
   }
 
   .nav-bar .link-btn {
@@ -457,12 +470,15 @@ a:hover {
     max-width: 220px;
   }
 
-  .app-body {
-    flex-direction: row;
+  .map-hint {
+    flex-shrink: 0;
   }
 
   .app-sidebar {
-    width: clamp(300px, 30vw, 420px);
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: clamp(320px, 32vw, 440px);
     max-height: none;
     overflow-y: auto;
     border-left: 1px solid var(--border);
@@ -483,7 +499,7 @@ a:hover {
   }
 
   .spot-list {
-    max-height: 220px;
+    max-height: min(28vh, 240px);
   }
 
   .rewards {
@@ -491,12 +507,25 @@ a:hover {
   }
 }
 
-/* Mobitel — puni ekran, kontrole ispod karte (bez uskog „phone frame”) */
+/* Mobitel — karta cijeli ekran, panel dolje */
 @media (max-width: 768px) {
+  .app-header,
+  .nav-bar,
+  .map-hint {
+    flex-shrink: 0;
+  }
+
   .app-sidebar {
-    max-height: min(48vh, 420px);
+    left: 0;
+    right: 0;
+    top: auto;
+    bottom: 0;
+    width: 100%;
+    max-height: min(52vh, 520px);
     overflow-y: auto;
     border-top: 1px solid var(--border);
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.5);
   }
 
   .mode-tabs {
@@ -690,11 +719,11 @@ a:hover {
 }
 
 @media (max-height: 600px) {
-  #map {
-    min-height: 160px;
+  .app-sidebar {
+    max-height: min(58vh, 480px);
   }
 
   .spot-list {
-    max-height: 100px;
+    max-height: 80px;
   }
 }
